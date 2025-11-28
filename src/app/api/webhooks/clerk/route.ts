@@ -43,10 +43,12 @@ export async function POST(req: Request) {
 
     // バックエンドAPIにユーザー情報を送信
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          // Webhook署名またはAPI Keyでバックエンド認証
+          'X-Webhook-Secret': process.env.BACKEND_API_SECRET || '',
         },
         body: JSON.stringify({
           clerkUserId: id,
@@ -56,6 +58,11 @@ export async function POST(req: Request) {
           primaryAuthProvider: email_addresses[0]?.verification?.strategy || 'unknown',
         }),
       })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Backend API error: ${response.status} - ${errorText}`)
+      }
     } catch (error) {
       console.error('Failed to sync user to backend:', error)
       return new Response('Error: Failed to sync user', { status: 500 })
@@ -67,10 +74,12 @@ export async function POST(req: Request) {
     const { id, email_addresses, first_name, last_name, image_url } = evt.data
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          // Webhook署名またはAPI Keyでバックエンド認証
+          'X-Webhook-Secret': process.env.BACKEND_API_SECRET || '',
         },
         body: JSON.stringify({
           email: email_addresses[0]?.email_address,
@@ -78,8 +87,14 @@ export async function POST(req: Request) {
           avatarUrl: image_url,
         }),
       })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Backend API error: ${response.status} - ${errorText}`)
+      }
     } catch (error) {
       console.error('Failed to update user in backend:', error)
+      return new Response('Error: Failed to update user', { status: 500 })
     }
   }
 
