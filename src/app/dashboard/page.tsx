@@ -86,6 +86,13 @@ export default function DashboardPage() {
               {loading ? '読み込み中...' : 'バックエンドAPIをテスト'}
             </button>
 
+            <a
+              href="/profile"
+              className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 inline-block"
+            >
+              プロフィールを見る
+            </a>
+
             <button
               onClick={() => signOut()}
               className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
