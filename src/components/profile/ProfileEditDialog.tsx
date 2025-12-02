@@ -20,7 +20,7 @@ const profileSchema = z.object({
     .url('有効なURLを入力してください')
     .optional()
     .or(z.literal('')),
-  default_privacy_setting: z.enum(['public', 'private']),
+  default_privacy_setting: z.enum(['public', 'private', 'friends']),
 })
 
 type ProfileFormData = z.infer<typeof profileSchema>
@@ -99,7 +99,7 @@ export default function ProfileEditDialog({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50" />
 
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl p-6">
+        <Dialog.Content className="text-gray-600 fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl p-6">
           <div className="flex items-center justify-between mb-4">
             <Dialog.Title className="text-2xl font-bold">
               プロフィール編集
@@ -174,6 +174,7 @@ export default function ProfileEditDialog({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="public">公開</option>
+                <option value="friends">フレンドのみ</option>
                 <option value="private">非公開</option>
               </select>
               {errors.default_privacy_setting && (

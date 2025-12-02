@@ -7,9 +7,15 @@ import { User } from '@/types/user'
 import { getCurrentUser } from '@/lib/api/users'
 import ProfileEditDialog from '@/components/profile/ProfileEditDialog'
 
+const privacyMap = {
+  public: '公開',
+  friends: 'フレンドのみ',
+  private: '非公開',
+}
+
 export default function ProfilePage() {
-  const { getToken } = useAuth()
-  const { user: clerkUser } = useUser()
+  const { getToken, signOut } = useAuth()
+  const { user: clerkUser, isLoaded } = useUser()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -22,37 +28,47 @@ export default function ProfilePage() {
     setError(null)
 
     try {
-      console.log('📝 Clerkユーザー情報:', clerkUser)
-      console.log('🔑 トークン取得中...')
+      console.log('Clerkユーザー情報:', clerkUser)
+      console.log('トークン取得中...')
 
       const token = await getToken()
-      console.log('✅ トークン取得成功:', token ? 'あり' : 'なし')
+      console.log('トークン取得成功:', token ? 'あり' : 'なし')
 
-      console.log('🌐 API呼び出し中...')
-      console.log('🔗 API URL:', process.env.NEXT_PUBLIC_API_URL)
+      if (!token) {
+        throw new Error('認証トークンが取得できませんでした')
+      }
+
+      console.log('API呼び出し中...')
+      console.log('API URL:', process.env.NEXT_PUBLIC_API_URL)
 
       const data = await getCurrentUser(getToken)
-      console.log('✅ ユーザー情報取得成功:', data)
+      console.log('ユーザー情報取得成功:', data)
 
       setUser(data)
     } catch (err: any) {
-      console.error('❌ エラー発生:', err)
+      console.error('エラー発生:', err)
       console.error('エラーメッセージ:', err.message)
       console.error('エラー詳細:', err)
       setError(err.message || 'ユーザー情報の取得に失敗しました')
     } finally {
       setLoading(false)
-      console.log('✅ fetchUser完了')
+      console.log('fetchUser完了')
     }
   }
 
   useEffect(() => {
-    console.log('🚀 ProfilePage マウント')
+    console.log('ProfilePage マウント', { isLoaded, clerkUser: !!clerkUser })
+
+    // Clerkのユーザー情報がロードされるまで待機
+    if (!isLoaded || !clerkUser) {
+      return
+    }
+
     fetchUser()
-  }, [])
+  }, [isLoaded, clerkUser?.id, getToken])
 
   const handleUpdateSuccess = (updatedUser: User) => {
-    console.log('✅ プロフィール更新成功:', updatedUser)
+    console.log('プロフィール更新成功:', updatedUser)
     setUser(updatedUser)
   }
 
@@ -118,7 +134,9 @@ export default function ProfilePage() {
       <div className="max-w-3xl mx-auto">
         {/* ヘッダー */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">プロフィール</h1>
+          <h1 className="text-gray-600 text-3xl font-bold text-gray-900">
+            プロフィール
+          </h1>
           <p className="text-gray-600 mt-1">あなたのアカウント情報</p>
         </div>
 
@@ -140,7 +158,6 @@ export default function ProfilePage() {
               )}
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-white">{user.name}</h2>
-                <p className="text-blue-100 mt-1">{user.email}</p>
               </div>
               <button
                 onClick={() => setIsEditDialogOpen(true)}
@@ -171,11 +188,9 @@ export default function ProfilePage() {
                   デフォルトプライバシー設定
                 </p>
                 <p className="text-gray-900">
-                  {user.default_privacy_setting === 'public'
-                    ? '公開'
-                    : '非公開'}
+                  {privacyMap[user.default_privacy_setting]}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   座席予約時のデフォルト設定
                 </p>
               </div>
@@ -214,6 +229,7 @@ export default function ProfilePage() {
 
           {/* Clerk情報 */}
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            <p className="text-gray-500 ">デバッグ用</p>
             <p className="text-xs text-gray-500">
               Clerk ID:{' '}
               <code className="bg-gray-200 px-2 py-1 rounded">
@@ -225,6 +241,15 @@ export default function ProfilePage() {
               <code className="bg-gray-200 px-2 py-1 rounded">{user.id}</code>
             </p>
           </div>
+        </div>
+
+        <div className="flex gap-4 mt-6 mb-6">
+          <button
+            onClick={() => signOut()}
+            className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
+          >
+            サインアウト
+          </button>
         </div>
 
         {/* ダッシュボードに戻るリンク */}
