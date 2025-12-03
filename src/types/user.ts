@@ -1,4 +1,6 @@
 export type UserRole = 'user' | 'admin' | 'moderator'
+export type AuthProvider = 'email' | 'google' | 'unknown'
+export type PrivacySetting = 'public' | 'friends' | 'private'
 
 export interface User {
   id: string
@@ -7,7 +9,9 @@ export interface User {
   name: string
   role: UserRole
   avatar_url?: string
-  default_privacy_setting: 'public' | 'private' | 'friends'
+  primary_auth_provider?: AuthProvider
+  default_privacy_setting: PrivacySetting
+  last_login_at?: string
   created_at: string
   updated_at: string
 }
@@ -15,7 +19,7 @@ export interface User {
 export interface UpdateProfileRequest {
   name?: string
   avatar_url?: string
-  default_privacy_setting?: 'public' | 'private' | 'friends'
+  default_privacy_setting?: PrivacySetting
 }
 
 export interface UpdateUserRoleRequest {
@@ -23,5 +27,5 @@ export interface UpdateUserRoleRequest {
 }
 
 // export interface AdminUser extends User {
-//   // 管理画面用の追加情報があればここに追加
+//   // 管理画面用の追加情報
 // }
