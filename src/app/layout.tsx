@@ -3,6 +3,7 @@ import './globals.css'
 import { ClerkProvider } from '@clerk/nextjs'
 import { jaJP } from '@clerk/localizations'
 import { Inter } from 'next/font/google'
+import { Header } from '@/components/layout/Header'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,7 +20,10 @@ export default function RootLayout({
   return (
     <ClerkProvider localization={jaJP}>
       <html lang="ja">
-        <body className={inter.className}>{children}</body>
+        <body className={inter.className}>
+          <Header />
+          <main className="min-h-screen bg-gray-50">{children}</main>
+        </body>
       </html>
     </ClerkProvider>
   )

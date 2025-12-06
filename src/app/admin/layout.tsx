@@ -8,6 +8,7 @@ import { getCurrentUser } from '@/lib/api/users'
 import { isAdmin } from '@/middleware/adminAuth'
 import { Users, LayoutDashboard, Shield } from 'lucide-react'
 import Link from 'next/link'
+import { MapPin } from 'lucide-react'
 
 export default function AdminLayout({
   children,
@@ -85,7 +86,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div>
       {/* 管理者ヘッダー */}
       <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -124,12 +125,22 @@ export default function AdminLayout({
                 <Users className="w-5 h-5" />
                 <span className="font-medium">ユーザー管理</span>
               </Link>
+
+              <Link
+                href="/admin/seats"
+                className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-700 rounded-md transition-colors"
+              >
+                <MapPin className="w-5 h-5" />
+                <span className="font-medium">座席管理</span>
+              </Link>
               <div className="border-t border-gray-200 my-4"></div>
               <Link
-                href="/dashboard"
+                href="/seats"
                 className="flex items-center gap-3 px-4 py-3 text-gray-500 hover:bg-gray-50 rounded-md transition-colors text-sm"
               >
-                ← 通常ダッシュボードに戻る
+                ← 座席ページへ戻る
+                <br />
+                （一般ユーザー画面）
               </Link>
             </nav>
           </aside>

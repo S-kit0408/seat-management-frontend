@@ -2,7 +2,16 @@
 
 import { useAuth, useUser } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
-import { User as UserIcon, Mail, Calendar, Shield, Edit } from 'lucide-react'
+import Link from 'next/link'
+import {
+  User as UserIcon,
+  Mail,
+  Calendar,
+  Shield,
+  Edit,
+  UserCog,
+  KeyRound,
+} from 'lucide-react'
 import { User } from '@/types/user'
 import { getCurrentUser } from '@/lib/api/users'
 import ProfileEditDialog from '@/components/profile/ProfileEditDialog'
@@ -11,6 +20,18 @@ const privacyMap = {
   public: '公開',
   friends: 'フレンドのみ',
   private: '非公開',
+}
+
+const roleMap = {
+  user: '一般ユーザー',
+  admin: '管理者',
+  moderator: 'モデレーター',
+}
+
+const authProviderMap = {
+  email: 'メールアドレス',
+  google: 'googleアカウント',
+  unknown: '不明',
 }
 
 export default function ProfilePage() {
@@ -129,6 +150,10 @@ export default function ProfilePage() {
     )
   }
 
+  const provider =
+    user.primary_auth_provider &&
+    authProviderMap[user.primary_auth_provider as keyof typeof authProviderMap]
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-3xl mx-auto">
@@ -182,6 +207,31 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex items-start gap-3">
+              <UserCog className="w-5 h-5 text-gray-400 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  ユーザー権限
+                </p>
+                <p className="text-gray-900">{roleMap[user.role]}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  権限により操作できる機能が異なります
+                </p>
+              </div>
+            </div>
+
+            {/* 認証方式（primary_auth_provider） */}
+            <div className="flex items-start gap-3">
+              <KeyRound className="w-5 h-5 text-gray-400 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-gray-500">認証方式</p>
+                <p className="text-gray-900">{provider ?? '不明'}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  このアカウントのログイン方法
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-gray-400 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-gray-500">
@@ -228,38 +278,19 @@ export default function ProfilePage() {
           </div>
 
           {/* Clerk情報 */}
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-            <p className="text-gray-500 ">デバッグ用</p>
-            <p className="text-xs text-gray-500">
-              Clerk ID:{' '}
-              <code className="bg-gray-200 px-2 py-1 rounded">
-                {user.clerk_user_id}
-              </code>
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              ユーザーID:{' '}
-              <code className="bg-gray-200 px-2 py-1 rounded">{user.id}</code>
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-4 mt-6 mb-6">
-          <button
-            onClick={() => signOut()}
-            className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
-          >
-            サインアウト
-          </button>
-        </div>
-
-        {/* ダッシュボードに戻るリンク */}
-        <div className="mt-6">
-          <a
-            href="/dashboard"
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-          >
-            ← ダッシュボードに戻る
-          </a>
+          {/*<div className="bg-gray-50 px-6 py-4 border-t border-gray-200">*/}
+          {/*  <p className="text-gray-500 ">デバッグ用</p>*/}
+          {/*  <p className="text-xs text-gray-500">*/}
+          {/*    Clerk ID:{' '}*/}
+          {/*    <code className="bg-gray-200 px-2 py-1 rounded">*/}
+          {/*      {user.clerk_user_id}*/}
+          {/*    </code>*/}
+          {/*  </p>*/}
+          {/*  <p className="text-xs text-gray-500 mt-1">*/}
+          {/*    ユーザーID:{' '}*/}
+          {/*    <code className="bg-gray-200 px-2 py-1 rounded">{user.id}</code>*/}
+          {/*  </p>*/}
+          {/*</div>*/}
         </div>
       </div>
 

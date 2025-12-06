@@ -11,10 +11,15 @@ import { X, Search, Loader2 } from 'lucide-react'
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSent: () => void
 }
 
-export default function SendRequestDialog({ open, onOpenChange }: Props) {
-  const { sendRequest } = useFriendRequests()
+export default function SendRequestDialog({
+  open,
+  onOpenChange,
+  onSent,
+}: Props) {
+  const { sendRequest, fetchSentRequests } = useFriendRequests()
   const { getToken } = useAuth()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -81,6 +86,9 @@ export default function SendRequestDialog({ open, onOpenChange }: Props) {
         message,
       })
 
+      await fetchSentRequests()
+      onSent()
+
       // 成功したらリセット
       setSelectedUser(null)
       setMessage('')
@@ -112,7 +120,7 @@ export default function SendRequestDialog({ open, onOpenChange }: Props) {
         <Dialog.Overlay className="fixed inset-0 bg-black/50" />
         <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
-            <Dialog.Title className="text-xl font-bold">
+            <Dialog.Title className="text-xl font-bold text-gray-800">
               フレンド申請を送信
             </Dialog.Title>
             <Dialog.Close className="text-gray-400 hover:text-gray-600">
@@ -134,7 +142,7 @@ export default function SendRequestDialog({ open, onOpenChange }: Props) {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full pl-10 pr-3 py-2 text-gray-800 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="名前で検索..."
                       autoFocus
                     />
@@ -238,7 +246,7 @@ export default function SendRequestDialog({ open, onOpenChange }: Props) {
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-gray-800 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={3}
                   placeholder="よろしくお願いします!"
                   disabled={!selectedUser}

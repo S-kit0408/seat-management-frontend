@@ -25,7 +25,3 @@ export interface UpdateProfileRequest {
 export interface UpdateUserRoleRequest {
   role: UserRole
 }
-
-// export interface AdminUser extends User {
-//   // 管理画面用の追加情報
-// }

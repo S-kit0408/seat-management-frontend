@@ -145,9 +145,7 @@ export default function AdminUsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">ユーザー管理</h2>
-          <p className="text-gray-600 mt-1">
-            全ユーザーの一覧と権限管理
-          </p>
+          <p className="text-gray-600 mt-1">全ユーザーの一覧と権限管理</p>
         </div>
         <div className="bg-purple-100 px-4 py-2 rounded-lg">
           <p className="text-sm text-purple-700 font-medium">
@@ -211,9 +209,7 @@ export default function AdminUsersPage() {
                         </div>
                       )}
                       <div>
-                        <p className="font-medium text-gray-900">
-                          {user.name}
-                        </p>
+                        <p className="font-medium text-gray-900">{user.name}</p>
                         <p className="text-xs text-gray-500">ID: {user.id}</p>
                       </div>
                     </div>
@@ -236,7 +232,7 @@ export default function AdminUsersPage() {
                           onChange={(e) =>
                             setSelectedRole(e.target.value as UserRole)
                           }
-                          className="border border-gray-300 rounded px-2 py-1 text-sm"
+                          className="text-gray-700 border border-gray-300 rounded px-2 py-1 text-sm"
                         >
                           <option value="user">一般ユーザー</option>
                           <option value="moderator">モデレーター</option>
@@ -333,9 +329,7 @@ export default function AdminUsersPage() {
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-green-600" />
             <div>
-              <p className="text-sm text-green-700 font-medium">
-                モデレーター
-              </p>
+              <p className="text-sm text-green-700 font-medium">モデレーター</p>
               <p className="text-2xl font-bold text-green-900">
                 {users.filter((u) => u.role === 'moderator').length}人
               </p>
@@ -347,9 +341,7 @@ export default function AdminUsersPage() {
           <div className="flex items-center gap-3">
             <Users className="w-8 h-8 text-gray-600" />
             <div>
-              <p className="text-sm text-gray-700 font-medium">
-                一般ユーザー
-              </p>
+              <p className="text-sm text-gray-700 font-medium">一般ユーザー</p>
               <p className="text-2xl font-bold text-gray-900">
                 {users.filter((u) => u.role === 'user').length}人
               </p>

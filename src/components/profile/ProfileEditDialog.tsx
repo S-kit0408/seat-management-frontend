@@ -115,7 +115,7 @@ export default function ProfileEditDialog({
           </div>
 
           <Dialog.Description className="text-sm text-gray-600 mb-6">
-            プロフィール情報を編集できます
+            プロフィール情報(名前・公開設定)を編集できます
           </Dialog.Description>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -133,28 +133,6 @@ export default function ProfileEditDialog({
               {errors.name && (
                 <p className="text-red-500 text-sm mt-1">
                   {errors.name.message}
-                </p>
-              )}
-            </div>
-
-            {/* アバターURL */}
-            <div>
-              <label
-                htmlFor="avatar_url"
-                className="block text-sm font-medium mb-1"
-              >
-                アバターURL
-              </label>
-              <input
-                id="avatar_url"
-                type="text"
-                {...register('avatar_url')}
-                placeholder="https://example.com/avatar.jpg"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {errors.avatar_url && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.avatar_url.message}
                 </p>
               )}
             </div>
@@ -184,6 +162,47 @@ export default function ProfileEditDialog({
               )}
               <p className="text-xs text-gray-500 mt-1">
                 座席予約時のデフォルトプライバシー設定
+              </p>
+            </div>
+
+            {/* アバターURL */}
+            {/*<div>*/}
+            {/*  <label*/}
+            {/*    htmlFor="avatar_url"*/}
+            {/*    className="block text-sm font-medium mb-1"*/}
+            {/*  >*/}
+            {/*    アバターURL*/}
+            {/*  </label>*/}
+            {/*  <input*/}
+            {/*    id="avatar_url"*/}
+            {/*    type="text"*/}
+            {/*    disabled*/}
+            {/*    {...register('avatar_url')}*/}
+            {/*    placeholder="https://example.com/avatar.jpg"*/}
+            {/*    className="w-full px-3 py-2 text-gray-400 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"*/}
+            {/*  />*/}
+            {/*  <p className="text-red-500 text-sm mt-1">*/}
+            {/*    プロフィール画像の変更はアカウント編集から行ってください。*/}
+            {/*  </p>*/}
+            {/*  {errors.avatar_url && (*/}
+            {/*    <p className="text-red-500 text-sm mt-1">*/}
+            {/*      {errors.avatar_url.message}*/}
+            {/*    </p>*/}
+            {/*  )}*/}
+            {/*</div>*/}
+
+            <div className="bg-red-50 border-l-4 border-red-400 text-red-800 p-4 rounded-md">
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                <li>プロフィール画像のアップロード</li>
+                <li>パスワードの編集（メールアドレスでの認証時のみ）</li>
+                <li>メールアドレスの追加</li>
+                <li>連携アカウントの追加</li>
+                <li>アカウントの削除</li>
+              </ul>
+
+              <p className="mt-3 text-sm">
+                これらの操作は画面右上のアカウント →
+                「アカウントの設定」から行ってください。
               </p>
             </div>
 

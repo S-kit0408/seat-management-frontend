@@ -2,7 +2,7 @@
 
 import { useAuth, useUser } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
-import { Users, Activity, Shield, TrendingUp } from 'lucide-react'
+import { Users, Activity, Shield, TrendingUp, MapPin } from 'lucide-react'
 import { getAllUsers } from '@/lib/api/admin'
 import { User } from '@/types/user'
 import Link from 'next/link'
@@ -151,6 +151,18 @@ export default function AdminDashboardPage() {
               <p className="font-medium text-gray-900">ユーザー管理</p>
               <p className="text-sm text-gray-600">
                 ユーザーの一覧表示、権限変更、削除
+              </p>
+            </div>
+          </Link>
+          <Link
+            href="/admin/users"
+            className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors"
+          >
+            <MapPin className="w-5 h-5 text-blue-600" />
+            <div>
+              <p className="font-medium text-gray-900">座席管理</p>
+              <p className="text-sm text-gray-600">
+                フロアの作成、座席の新規配置・編集・削除
               </p>
             </div>
           </Link>
