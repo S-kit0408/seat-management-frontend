@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Search, X } from 'lucide-react'
 
 interface AttributeSearchProps {
@@ -8,6 +7,7 @@ interface AttributeSearchProps {
   onSearchChange: (keyword: string) => void
   selectedAttributes: string[]
   onAttributesChange: (attributes: string[]) => void
+  resultCount?: number
 }
 
 // よく使う属性リスト
@@ -27,6 +27,7 @@ export function AttributeSearch({
   onSearchChange,
   selectedAttributes,
   onAttributesChange,
+  resultCount,
 }: AttributeSearchProps) {
   // 属性のトグル処理
   const handleAttributeToggle = (attr: string) => {
@@ -138,11 +139,12 @@ export function AttributeSearch({
         </div>
       )}
 
-      {/* 検索結果の説明（準備中） */}
-      {hasActiveFilters && (
-        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-xs text-red-700">
-            検索機能は準備中です。現在は表示のみです。
+      {/* 検索結果の表示 */}
+      {hasActiveFilters && resultCount !== undefined && (
+        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-700">
+            <span className="font-semibold">{resultCount}件</span>
+            の座席が見つかりました
           </p>
         </div>
       )}

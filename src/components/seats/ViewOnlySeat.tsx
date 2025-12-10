@@ -8,9 +8,16 @@ interface ViewOnlySeatProps {
   isSelected: boolean
   onSelect: (id: string) => void
   zoom: number
+  isDimmed?: boolean
 }
 
-export function ViewOnlySeat({ seat, isSelected, onSelect, zoom }: ViewOnlySeatProps) {
+export function ViewOnlySeat({
+  seat,
+  isSelected,
+  onSelect,
+  zoom,
+  isDimmed = false,
+}: ViewOnlySeatProps) {
   return (
     <g
       onClick={() => onSelect(seat.id)}
@@ -26,6 +33,7 @@ export function ViewOnlySeat({ seat, isSelected, onSelect, zoom }: ViewOnlySeatP
           rotationAngle={seat.rotation_angle}
           isSelected={isSelected}
           isActive={seat.is_active}
+          isDimmed={isDimmed}
         />
 
         {/* 利用可能/不可のテキスト表示 */}
@@ -35,7 +43,11 @@ export function ViewOnlySeat({ seat, isSelected, onSelect, zoom }: ViewOnlySeatP
           textAnchor="middle"
           dominantBaseline="middle"
           className={`font-bold pointer-events-none select-none ${
-            seat.is_active ? 'fill-green-700' : 'fill-red-700'
+            isDimmed
+              ? 'fill-gray-500'
+              : seat.is_active
+                ? 'fill-green-700'
+                : 'fill-red-700'
           }`}
           style={{ fontSize: `${14 / zoom}px` }}
         >

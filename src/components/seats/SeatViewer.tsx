@@ -4,19 +4,83 @@ import { useSeatStore } from '@/lib/stores/seatStore'
 import { ViewOnlySeat } from './ViewOnlySeat'
 import { useState } from 'react'
 import { ZoomIn, ZoomOut, Maximize2, RotateCcw } from 'lucide-react'
+import { Seat } from '@/types/seat'
 
 const CANVAS_WIDTH = 3000
 const CANVAS_HEIGHT = 1500
 
 interface SeatViewerProps {
   filterFloorId?: string | null
+  searchKeyword?: string
+  selectedAttributes?: string[]
 }
 
-export function SeatViewer({ filterFloorId }: SeatViewerProps = {}) {
+export function SeatViewer({
+  filterFloorId,
+  searchKeyword = '',
+  selectedAttributes = []
+}: SeatViewerProps = {}) {
   const { seats, selectSeat, deselectAll, selectedSeatIds } = useSeatStore()
   const [zoom, setZoom] = useState(0.5) // 初期50%表示
 
-  // フロアでフィルタリング
+  // 検索条件が設定されているかチェック
+  const hasSearchConditions =
+    selectedAttributes.length > 0 || searchKeyword.trim().length > 0
+
+  // 座席が検索条件に該当するかチェックする関数
+  const matchesSearchCriteria = (seat: Seat): boolean => {
+    // 検索条件がない場合は常にtrue
+    if (!hasSearchConditions) return true
+
+    // 属性フィルタ（AND検索：選択した属性すべてを含む席のみ）
+    if (selectedAttributes.length > 0) {
+      const seatAttrs = seat.attributes || {}
+      const hasAllAttributes = selectedAttributes.every((attr) => {
+        // attributesオブジェクトのキーまたは値に属性が含まれているかチェック
+        return Object.entries(seatAttrs).some(([key, value]) => {
+          // キーが一致する場合、値がtrueまたは存在する
+          if (key === attr && value) return true
+          // 値が文字列の場合、部分一致
+          if (typeof value === 'string' && value.includes(attr)) return true
+          // 配列の場合、要素に含まれるか
+          if (Array.isArray(value) && value.includes(attr)) return true
+          return false
+        })
+      })
+      if (!hasAllAttributes) return false
+    }
+
+    // キーワード検索（attributes、seat_number、descriptionから検索）
+    if (searchKeyword.trim()) {
+      const keyword = searchKeyword.toLowerCase()
+      const seatAttrs = seat.attributes || {}
+
+      // seat_numberでの検索
+      if (seat.seat_number?.toLowerCase().includes(keyword)) return true
+
+      // descriptionでの検索
+      if (seat.description?.toLowerCase().includes(keyword)) return true
+
+      // attributesでの検索
+      const matchesAttributes = Object.entries(seatAttrs).some(([key, value]) => {
+        if (key.toLowerCase().includes(keyword)) return true
+        if (typeof value === 'string' && value.toLowerCase().includes(keyword))
+          return true
+        if (Array.isArray(value)) {
+          return value.some(
+            (v) => typeof v === 'string' && v.toLowerCase().includes(keyword)
+          )
+        }
+        return false
+      })
+
+      if (!matchesAttributes) return false
+    }
+
+    return true
+  }
+
+  // フロアフィルタのみ適用（全座席を表示）
   const filteredSeats = filterFloorId
     ? seats.filter((seat) => seat.floor_id === filterFloorId)
     : seats
@@ -149,15 +213,19 @@ export function SeatViewer({ filterFloorId }: SeatViewerProps = {}) {
 
           {/* ズームを適用したグループ */}
           <g transform={`scale(${zoom})`}>
-            {filteredSeats.map((seat) => (
-              <ViewOnlySeat
-                key={seat.id}
-                seat={seat}
-                isSelected={selectedSeatIds.includes(seat.id)}
-                onSelect={handleSeatSelect}
-                zoom={zoom}
-              />
-            ))}
+            {filteredSeats.map((seat) => {
+              const isDimmed = hasSearchConditions && !matchesSearchCriteria(seat)
+              return (
+                <ViewOnlySeat
+                  key={seat.id}
+                  seat={seat}
+                  isSelected={selectedSeatIds.includes(seat.id)}
+                  onSelect={handleSeatSelect}
+                  zoom={zoom}
+                  isDimmed={isDimmed}
+                />
+              )
+            })}
           </g>
         </svg>
       </div>
@@ -176,6 +244,12 @@ export function SeatViewer({ filterFloorId }: SeatViewerProps = {}) {
           <div className="w-4 h-4 bg-red-100 border-2 border-red-600 rounded" />
           <span>利用不可</span>
         </div>
+        {hasSearchConditions && (
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-4 bg-gray-100 border-2 border-gray-400 rounded" />
+            <span>検索条件外</span>
+          </div>
+        )}
       </div>
     </div>
   )

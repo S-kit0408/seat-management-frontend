@@ -7,6 +7,7 @@ interface SeatShapeRendererProps {
   rotationAngle: number
   isSelected: boolean
   isActive?: boolean
+  isDimmed?: boolean
 }
 
 export function SeatShapeRenderer({
@@ -16,8 +17,9 @@ export function SeatShapeRenderer({
   rotationAngle,
   isSelected,
   isActive = true,
+  isDimmed = false,
 }: SeatShapeRendererProps) {
-  // 利用可能/不可に応じて色を変更
+  // 優先順位: 選択 > 灰色表示 > 利用可能/不可
   let strokeColor: string
   let fillColor: string
 
@@ -25,6 +27,10 @@ export function SeatShapeRenderer({
     // 選択時は紫色
     strokeColor = '#8b5cf6'
     fillColor = '#ede9fe'
+  } else if (isDimmed) {
+    // 検索条件に該当しない場合は灰色
+    strokeColor = '#9ca3af'
+    fillColor = '#f3f4f6'
   } else if (isActive) {
     // 利用可能は緑色
     strokeColor = '#16a34a'

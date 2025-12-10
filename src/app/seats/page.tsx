@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { useSeatStore } from '@/lib/stores/seatStore'
 import { seatApi } from '@/lib/api/seats'
@@ -26,6 +26,55 @@ export default function SeatsPage() {
 
   const [searchKeyword, setSearchKeyword] = useState('')
   const [selectedAttributes, setSelectedAttributes] = useState<string[]>([])
+
+  // フィルタリング後の座席数を計算
+  const filteredSeatsCount = useMemo(() => {
+    return seats.filter((seat) => {
+      // フロアフィルタ
+      if (selectedFloorId && seat.floor_id !== selectedFloorId) {
+        return false
+      }
+
+      // 属性フィルタ
+      if (selectedAttributes.length > 0) {
+        const seatAttrs = seat.attributes || {}
+        const hasAllAttributes = selectedAttributes.every((attr) => {
+          return Object.entries(seatAttrs).some(([key, value]) => {
+            if (key === attr && value) return true
+            if (typeof value === 'string' && value.includes(attr)) return true
+            if (Array.isArray(value) && value.includes(attr)) return true
+            return false
+          })
+        })
+        if (!hasAllAttributes) return false
+      }
+
+      // キーワード検索
+      if (searchKeyword.trim()) {
+        const keyword = searchKeyword.toLowerCase()
+        const seatAttrs = seat.attributes || {}
+
+        if (seat.seat_number?.toLowerCase().includes(keyword)) return true
+        if (seat.description?.toLowerCase().includes(keyword)) return true
+
+        const matchesAttributes = Object.entries(seatAttrs).some(([key, value]) => {
+          if (key.toLowerCase().includes(keyword)) return true
+          if (typeof value === 'string' && value.toLowerCase().includes(keyword))
+            return true
+          if (Array.isArray(value)) {
+            return value.some(
+              (v) => typeof v === 'string' && v.toLowerCase().includes(keyword)
+            )
+          }
+          return false
+        })
+
+        if (!matchesAttributes) return false
+      }
+
+      return true
+    }).length
+  }, [seats, selectedFloorId, selectedAttributes, searchKeyword])
 
   // データの取得
   useEffect(() => {
@@ -136,7 +185,6 @@ export default function SeatsPage() {
 
           {/* 検索タブ */}
           <div className="bg-white rounded-lg shadow-md p-4">
-            <p className="text-red-600">検索機能は今後実装</p>
             <div className="flex border-b border-gray-200 mb-4">
               <button
                 className={`px-4 py-2 font-medium ${
@@ -168,6 +216,7 @@ export default function SeatsPage() {
                 onSearchChange={setSearchKeyword}
                 selectedAttributes={selectedAttributes}
                 onAttributesChange={setSelectedAttributes}
+                resultCount={filteredSeatsCount}
               />
             )}
 
@@ -195,7 +244,11 @@ export default function SeatsPage() {
           {/* キャンバスと情報パネル */}
           <div className="relative">
             <div className="bg-white rounded-lg shadow-md p-4">
-              <SeatViewer filterFloorId={selectedFloorId} />
+              <SeatViewer
+                filterFloorId={selectedFloorId}
+                searchKeyword={searchKeyword}
+                selectedAttributes={selectedAttributes}
+              />
             </div>
 
             {/* 座席情報パネル（フローティング表示） */}
