@@ -8,6 +8,17 @@ export async function getCurrentUser(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
+    console.error('ユーザー情報取得エラー:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: error
+    })
+
+    // 404の場合は、より詳細なエラーメッセージを表示
+    if (response.status === 404) {
+      throw new Error('ユーザー情報が見つかりません。初回サインイン後、しばらくお待ちください。')
+    }
+
     throw new Error(error.error || 'ユーザー情報の取得に失敗しました')
   }
 

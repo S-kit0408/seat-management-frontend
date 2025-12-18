@@ -1,8 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { Seat } from '@/types/seat'
 import { useSeatStore } from '@/lib/stores/seatStore'
-import { CheckCircle, XCircle, MapPin, Tag } from 'lucide-react'
+import { CheckCircle, XCircle, MapPin, Tag, Calendar, Zap } from 'lucide-react'
+import CreateReservationDialog from '@/components/reservations/CreateReservationDialog'
+import InstantReservationDialog from '@/components/reservations/InstantReservationDialog'
+import { useReservations } from '@/hooks/useReservation'
+import { CreateReservationRequest, CreateInstantReservationRequest } from '@/types/reservation'
 
 interface SeatInfoPanelProps {
   selectedSeatId: string | null
@@ -10,6 +15,9 @@ interface SeatInfoPanelProps {
 
 export function SeatInfoPanel({ selectedSeatId }: SeatInfoPanelProps) {
   const { seats } = useSeatStore()
+  const { createReservation, createInstantReservation } = useReservations()
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [instantDialogOpen, setInstantDialogOpen] = useState(false)
 
   const seat = seats.find((s) => s.id === selectedSeatId)
 
@@ -128,22 +136,61 @@ export function SeatInfoPanel({ selectedSeatId }: SeatInfoPanelProps) {
         </div>
       </div>
 
-      {/* 予約ボタン（まだ機能しない） */}
-      <div className="pt-2">
+      {/* 予約ボタン */}
+      <div className="pt-2 space-y-2">
         <button
           disabled={!seat.is_active}
-          className={`w-full py-3 rounded-lg font-semibold transition-colors ${
+          onClick={() => setInstantDialogOpen(true)}
+          className={`w-full py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 ${
+            seat.is_active
+              ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          <Zap className="w-4 h-4" />
+          {seat.is_active ? '今すぐ予約' : '利用できません'}
+        </button>
+
+        <button
+          disabled={!seat.is_active}
+          onClick={() => setCreateDialogOpen(true)}
+          className={`w-full py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
             seat.is_active
               ? 'bg-blue-600 hover:bg-blue-700 text-white'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
         >
-          {seat.is_active ? 'この座席を予約・利用する' : '利用できません'}
+          <Calendar className="w-4 h-4" />
+          {seat.is_active ? '日時を指定して予約' : '利用できません'}
         </button>
-        <p className="text-base text-red-500 text-center mt-2">
-          ※ 予約機能は未実装
-        </p>
       </div>
+
+      {/* 予約ダイアログ */}
+      <InstantReservationDialog
+        open={instantDialogOpen}
+        onOpenChange={setInstantDialogOpen}
+        onSuccess={(reservation) => {
+          alert(`予約が完了しました！\n座席: ${seat.seat_number}`)
+          setInstantDialogOpen(false)
+        }}
+        onSubmit={async (data: CreateInstantReservationRequest) => {
+          await createInstantReservation(data)
+        }}
+        defaultSeatId={seat.id}
+      />
+
+      <CreateReservationDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={(reservation) => {
+          alert(`予約が完了しました！\n座席: ${seat.seat_number}`)
+          setCreateDialogOpen(false)
+        }}
+        onSubmit={async (data: CreateReservationRequest) => {
+          await createReservation(data)
+        }}
+        defaultSeatId={seat.id}
+      />
     </div>
   )
 }

@@ -10,7 +10,7 @@ import {
   useUser,
   useAuth,
 } from '@clerk/nextjs'
-import { MapPin, Users, User, Shield } from 'lucide-react'
+import { MapPin, Users, User, Shield, Calendar } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { getCurrentUser } from '@/lib/api/users'
 import { isAdmin } from '@/middleware/adminAuth'
@@ -81,6 +81,14 @@ export function Header() {
             </Link>
 
             <Link
+              href="/reservations"
+              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${isActive('/reservations')}`}
+            >
+              <Calendar className="w-4 h-4" />
+              <span>予約</span>
+            </Link>
+
+            <Link
               href="/friends"
               className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${isActive('/friends')}`}
             >
@@ -134,6 +142,14 @@ export function Header() {
           >
             <MapPin className="w-4 h-4" />
             <span>座席</span>
+          </Link>
+
+          <Link
+            href="/reservations"
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-md transition-colors text-sm whitespace-nowrap ${isActive('/reservations')}`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>予約</span>
           </Link>
 
           <Link
