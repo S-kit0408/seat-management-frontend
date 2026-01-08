@@ -39,6 +39,8 @@ export interface CreateReservationRequest {
   seat_id: string
   start_time: string
   end_time: string
+  privacy_setting?: PrivacySetting
+  notes?: string
 }
 
 export interface CreateInstantReservationRequest {

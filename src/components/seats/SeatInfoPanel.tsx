@@ -1,25 +1,58 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@clerk/nextjs'
 import { Seat } from '@/types/seat'
+import { Reservation } from '@/types/reservation'
 import { useSeatStore } from '@/lib/stores/seatStore'
-import { CheckCircle, XCircle, MapPin, Tag, Calendar, Zap } from 'lucide-react'
+import { CheckCircle, XCircle, MapPin, Tag, Calendar, Zap, Clock, AlertCircle } from 'lucide-react'
 import CreateReservationDialog from '@/components/reservations/CreateReservationDialog'
 import InstantReservationDialog from '@/components/reservations/InstantReservationDialog'
 import { useReservations } from '@/hooks/useReservation'
-import { CreateReservationRequest, CreateInstantReservationRequest } from '@/types/reservation'
+import { reservationApi } from '@/lib/api/reservations'
+import {
+  CreateReservationRequest,
+  CreateInstantReservationRequest,
+} from '@/types/reservation'
 
 interface SeatInfoPanelProps {
   selectedSeatId: string | null
 }
 
 export function SeatInfoPanel({ selectedSeatId }: SeatInfoPanelProps) {
+  const { getToken } = useAuth()
   const { seats } = useSeatStore()
   const { createReservation, createInstantReservation } = useReservations()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [instantDialogOpen, setInstantDialogOpen] = useState(false)
+  const [currentReservation, setCurrentReservation] = useState<Reservation | null>(null)
 
   const seat = seats.find((s) => s.id === selectedSeatId)
+
+  // 選択された座席の現在の予約を取得
+  useEffect(() => {
+    if (!selectedSeatId || !getToken) {
+      setCurrentReservation(null)
+      return
+    }
+
+    const fetchReservation = async () => {
+      try {
+        const data = await reservationApi.getVisibleReservations(getToken)
+        const reservation = data.find(
+          (r) =>
+            r.seat_id === selectedSeatId &&
+            (r.status === 'in_use' || r.status === 'reserved')
+        )
+        setCurrentReservation(reservation || null)
+      } catch (err: any) {
+        console.error('予約情報取得エラー:', err)
+        setCurrentReservation(null)
+      }
+    }
+
+    fetchReservation()
+  }, [selectedSeatId, getToken])
 
   if (!seat) {
     return (
@@ -83,6 +116,39 @@ export function SeatInfoPanel({ selectedSeatId }: SeatInfoPanelProps) {
           )}
         </div>
       </div>
+
+      {/* 予約状態 */}
+      {currentReservation && (
+        <div className="py-2 border-b border-gray-200">
+          <div className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+            <Clock className="w-4 h-4" />
+            現在の予約状態
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              {currentReservation.status === 'in_use' ? (
+                <>
+                  <AlertCircle className="w-4 h-4 text-orange-600" />
+                  <span className="font-semibold text-orange-700">使用中</span>
+                </>
+              ) : (
+                <>
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <span className="font-semibold text-blue-700">予約済</span>
+                </>
+              )}
+            </div>
+            <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+              <div>
+                開始: {new Date(currentReservation.start_time).toLocaleString('ja-JP')}
+              </div>
+              <div>
+                終了: {new Date(currentReservation.end_time).toLocaleString('ja-JP')}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 説明 */}
       {seat.description && (
@@ -148,7 +214,7 @@ export function SeatInfoPanel({ selectedSeatId }: SeatInfoPanelProps) {
           }`}
         >
           <Zap className="w-4 h-4" />
-          {seat.is_active ? '今すぐ予約' : '利用できません'}
+          {seat.is_active ? '今すぐ利用' : '利用できません'}
         </button>
 
         <button

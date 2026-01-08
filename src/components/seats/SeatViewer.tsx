@@ -2,9 +2,12 @@
 
 import { useSeatStore } from '@/lib/stores/seatStore'
 import { ViewOnlySeat } from './ViewOnlySeat'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@clerk/nextjs'
 import { ZoomIn, ZoomOut, Maximize2, RotateCcw } from 'lucide-react'
 import { Seat } from '@/types/seat'
+import { Reservation, ReservationStatus } from '@/types/reservation'
+import { reservationApi } from '@/lib/api/reservations'
 
 const CANVAS_WIDTH = 3000
 const CANVAS_HEIGHT = 1500
@@ -20,8 +23,34 @@ export function SeatViewer({
   searchKeyword = '',
   selectedAttributes = []
 }: SeatViewerProps = {}) {
+  const { getToken } = useAuth()
   const { seats, selectSeat, deselectAll, selectedSeatIds } = useSeatStore()
   const [zoom, setZoom] = useState(0.5) // 初期50%表示
+  const [reservations, setReservations] = useState<Reservation[]>([])
+
+  // 予約データを取得
+  useEffect(() => {
+    const fetchReservations = async () => {
+      try {
+        const data = await reservationApi.getVisibleReservations(getToken)
+        setReservations(data)
+      } catch (err: any) {
+        console.error('予約データ取得エラー:', err)
+        // エラーは無視して、空配列のまま続行
+        setReservations([])
+      }
+    }
+
+    fetchReservations()
+  }, [getToken])
+
+  // 座席IDから予約状態を取得する関数
+  const getReservationStatusForSeat = (seatId: string): ReservationStatus | null => {
+    const reservation = reservations.find(
+      (r) => r.seat_id === seatId && (r.status === 'in_use' || r.status === 'reserved')
+    )
+    return reservation?.status || null
+  }
 
   // 検索条件が設定されているかチェック
   const hasSearchConditions =
@@ -215,6 +244,7 @@ export function SeatViewer({
           <g transform={`scale(${zoom})`}>
             {filteredSeats.map((seat) => {
               const isDimmed = hasSearchConditions && !matchesSearchCriteria(seat)
+              const reservationStatus = getReservationStatusForSeat(seat.id)
               return (
                 <ViewOnlySeat
                   key={seat.id}
@@ -223,6 +253,7 @@ export function SeatViewer({
                   onSelect={handleSeatSelect}
                   zoom={zoom}
                   isDimmed={isDimmed}
+                  reservationStatus={reservationStatus}
                 />
               )
             })}
@@ -231,10 +262,18 @@ export function SeatViewer({
       </div>
 
       {/* 凡例 */}
-      <div className="mt-2 flex items-center gap-4 text-xs text-gray-600">
+      <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-600">
         <div className="flex items-center gap-1">
           <div className="w-4 h-4 bg-purple-100 border-2 border-purple-500 rounded" />
           <span>選択中</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-4 h-4 bg-orange-100 border-2 border-orange-600 rounded" />
+          <span>使用中</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-4 h-4 bg-blue-100 border-2 border-blue-600 rounded" />
+          <span>予約済</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-4 h-4 bg-green-100 border-2 border-green-600 rounded" />

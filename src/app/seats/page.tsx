@@ -57,17 +57,23 @@ export default function SeatsPage() {
         if (seat.seat_number?.toLowerCase().includes(keyword)) return true
         if (seat.description?.toLowerCase().includes(keyword)) return true
 
-        const matchesAttributes = Object.entries(seatAttrs).some(([key, value]) => {
-          if (key.toLowerCase().includes(keyword)) return true
-          if (typeof value === 'string' && value.toLowerCase().includes(keyword))
-            return true
-          if (Array.isArray(value)) {
-            return value.some(
-              (v) => typeof v === 'string' && v.toLowerCase().includes(keyword)
+        const matchesAttributes = Object.entries(seatAttrs).some(
+          ([key, value]) => {
+            if (key.toLowerCase().includes(keyword)) return true
+            if (
+              typeof value === 'string' &&
+              value.toLowerCase().includes(keyword)
             )
+              return true
+            if (Array.isArray(value)) {
+              return value.some(
+                (v) =>
+                  typeof v === 'string' && v.toLowerCase().includes(keyword)
+              )
+            }
+            return false
           }
-          return false
-        })
+        )
 
         if (!matchesAttributes) return false
       }
@@ -158,31 +164,6 @@ export default function SeatsPage() {
             </p>
           </div>
 
-          {/* フロア選択 */}
-          {floors.length > 0 && (
-            <div className="bg-white rounded-lg shadow-md p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Building2 className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">フロア選択</h3>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {floors.map((floor) => (
-                  <button
-                    key={floor.id}
-                    onClick={() => setSelectedFloorId(floor.id)}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                      selectedFloorId === floor.id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {floor.display_name || floor.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* 検索タブ */}
           <div className="bg-white rounded-lg shadow-md p-4">
             <div className="flex border-b border-gray-200 mb-4">
@@ -240,6 +221,31 @@ export default function SeatsPage() {
               </div>
             )}
           </div>
+
+          {/* フロア選択 */}
+          {floors.length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Building2 className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold text-gray-900">フロア選択</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {floors.map((floor) => (
+                  <button
+                    key={floor.id}
+                    onClick={() => setSelectedFloorId(floor.id)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      selectedFloorId === floor.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {floor.display_name || floor.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* キャンバスと情報パネル */}
           <div className="relative">

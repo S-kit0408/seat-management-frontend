@@ -1,6 +1,7 @@
 'use client'
 
 import { Seat } from '@/types/seat'
+import { ReservationStatus } from '@/types/reservation'
 import { SeatShapeRenderer } from './SeatShapeRenderer'
 
 interface ViewOnlySeatProps {
@@ -9,6 +10,7 @@ interface ViewOnlySeatProps {
   onSelect: (id: string) => void
   zoom: number
   isDimmed?: boolean
+  reservationStatus?: ReservationStatus | null
 }
 
 export function ViewOnlySeat({
@@ -17,7 +19,26 @@ export function ViewOnlySeat({
   onSelect,
   zoom,
   isDimmed = false,
+  reservationStatus,
 }: ViewOnlySeatProps) {
+  // テキスト表示の文字と色を決定
+  let displayText: string
+  let displayColor: string
+
+  if (reservationStatus === 'in_use') {
+    displayText = '使用中'
+    displayColor = isDimmed ? '#9ca3af' : '#ea580c'
+  } else if (reservationStatus === 'reserved') {
+    displayText = '予約済'
+    displayColor = isDimmed ? '#9ca3af' : '#2563eb'
+  } else if (isDimmed) {
+    displayText = seat.is_active ? '可' : '不可'
+    displayColor = '#9ca3af'
+  } else {
+    displayText = seat.is_active ? '可' : '不可'
+    displayColor = seat.is_active ? '#16a34a' : '#dc2626'
+  }
+
   return (
     <g
       onClick={() => onSelect(seat.id)}
@@ -34,24 +55,20 @@ export function ViewOnlySeat({
           isSelected={isSelected}
           isActive={seat.is_active}
           isDimmed={isDimmed}
+          reservationStatus={reservationStatus}
         />
 
-        {/* 利用可能/不可のテキスト表示 */}
+        {/* 状態表示（可/不可/使用中/予約済） */}
         <text
           x={seat.width / 2}
           y={seat.height / 2}
           textAnchor="middle"
           dominantBaseline="middle"
-          className={`font-bold pointer-events-none select-none ${
-            isDimmed
-              ? 'fill-gray-500'
-              : seat.is_active
-                ? 'fill-green-700'
-                : 'fill-red-700'
-          }`}
+          className="font-bold pointer-events-none select-none"
+          fill={displayColor}
           style={{ fontSize: `${14 / zoom}px` }}
         >
-          {seat.is_active ? '可' : '不可'}
+          {displayText}
         </text>
       </g>
     </g>

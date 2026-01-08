@@ -91,6 +91,16 @@ export default function CreateReservationDialog({
         end_time: endDate.toISOString(),
       }
 
+      // privacy_settingが空文字列の場合はundefinedに変換（デフォルト設定を使用）
+      if (data.privacy_setting) {
+        requestData.privacy_setting = data.privacy_setting
+      }
+
+      // notesが空文字列でない場合のみ追加
+      if (data.notes && data.notes.trim() !== '') {
+        requestData.notes = data.notes.trim()
+      }
+
       await onSubmit(requestData)
       reset()
       onOpenChange(false)
@@ -156,7 +166,7 @@ export default function CreateReservationDialog({
                 id="seat_id"
                 type="text"
                 {...register('seat_id')}
-                placeholder="01HXXX1234567890ABCDEFGHIJ"
+                disabled
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {errors.seat_id && (
@@ -223,7 +233,9 @@ export default function CreateReservationDialog({
               </label>
               <select
                 id="privacy_setting"
-                {...register('privacy_setting')}
+                {...register('privacy_setting', {
+                  setValueAs: (v) => (v === '' ? undefined : v),
+                })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">デフォルト設定を使用</option>
