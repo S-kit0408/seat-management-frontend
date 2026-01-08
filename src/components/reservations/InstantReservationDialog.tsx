@@ -84,6 +84,8 @@ export default function InstantReservationDialog({
       const requestData: CreateInstantReservationRequest = {
         seat_id: data.seat_id,
         duration_minutes: data.duration_minutes,
+        // 座席の使用状況は全員が知る必要があるため、デフォルトは「公開」
+        privacy_setting: 'public',
       }
 
       await onSubmit(requestData)

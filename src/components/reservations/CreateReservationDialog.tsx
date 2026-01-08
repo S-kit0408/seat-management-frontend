@@ -89,11 +89,8 @@ export default function CreateReservationDialog({
         seat_id: data.seat_id,
         start_time: startDate.toISOString(),
         end_time: endDate.toISOString(),
-      }
-
-      // privacy_settingが空文字列の場合はundefinedに変換（デフォルト設定を使用）
-      if (data.privacy_setting) {
-        requestData.privacy_setting = data.privacy_setting
+        // 座席の使用状況は全員が知る必要があるため、デフォルトは「公開」
+        privacy_setting: data.privacy_setting || 'public',
       }
 
       // notesが空文字列でない場合のみ追加
