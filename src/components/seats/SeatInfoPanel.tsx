@@ -39,11 +39,21 @@ export function SeatInfoPanel({ selectedSeatId }: SeatInfoPanelProps) {
     const fetchReservation = async () => {
       try {
         const data = await reservationApi.getVisibleReservations(getToken)
-        const reservation = data.find(
-          (r) =>
-            r.seat_id === selectedSeatId &&
-            (r.status === 'in_use' || r.status === 'reserved')
-        )
+        const now = new Date()
+
+        const reservation = data.find((r) => {
+          // 座席IDが一致していない場合はスキップ
+          if (r.seat_id !== selectedSeatId) return false
+
+          // キャンセル済みや完了済みは表示しない
+          if (r.status === 'cancelled' || r.status === 'completed') return false
+
+          // in_use または reserved なら対象
+          if (r.status === 'in_use' || r.status === 'reserved') return true
+
+          return false
+        })
+
         setCurrentReservation(reservation || null)
       } catch (err: any) {
         console.error('予約情報取得エラー:', err)
@@ -126,17 +136,40 @@ export function SeatInfoPanel({ selectedSeatId }: SeatInfoPanelProps) {
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
-              {currentReservation.status === 'in_use' ? (
-                <>
-                  <AlertCircle className="w-4 h-4 text-orange-600" />
-                  <span className="font-semibold text-orange-700">使用中</span>
-                </>
-              ) : (
-                <>
-                  <Calendar className="w-4 h-4 text-blue-600" />
-                  <span className="font-semibold text-blue-700">予約済</span>
-                </>
-              )}
+              {(() => {
+                // status が 'in_use' なら使用中
+                if (currentReservation.status === 'in_use') {
+                  return (
+                    <>
+                      <AlertCircle className="w-4 h-4 text-orange-600" />
+                      <span className="font-semibold text-orange-700">使用中</span>
+                    </>
+                  )
+                }
+
+                // status が 'reserved' で開始時刻 <= 現在時刻 < 終了時刻 なら使用中
+                if (currentReservation.status === 'reserved') {
+                  const now = new Date()
+                  const startTime = new Date(currentReservation.start_time)
+                  const endTime = new Date(currentReservation.end_time)
+                  if (startTime <= now && now < endTime) {
+                    return (
+                      <>
+                        <AlertCircle className="w-4 h-4 text-orange-600" />
+                        <span className="font-semibold text-orange-700">使用中</span>
+                      </>
+                    )
+                  }
+                }
+
+                // それ以外は予約済
+                return (
+                  <>
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                    <span className="font-semibold text-blue-700">予約済</span>
+                  </>
+                )
+              })()}
             </div>
             <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
               <div>

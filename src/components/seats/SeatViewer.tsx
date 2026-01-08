@@ -35,7 +35,7 @@ export function SeatViewer({
         const data = await reservationApi.getVisibleReservations(getToken)
         setReservations(data)
       } catch (err: any) {
-        console.error('予約データ取得エラー:', err)
+        console.error('[SeatViewer] 予約データ取得エラー:', err)
         // エラーは無視して、空配列のまま続行
         setReservations([])
       }
@@ -46,10 +46,38 @@ export function SeatViewer({
 
   // 座席IDから予約状態を取得する関数
   const getReservationStatusForSeat = (seatId: string): ReservationStatus | null => {
-    const reservation = reservations.find(
-      (r) => r.seat_id === seatId && (r.status === 'in_use' || r.status === 'reserved')
-    )
-    return reservation?.status || null
+    const now = new Date()
+
+    const reservation = reservations.find((r) => {
+      // 座席IDが一致していない場合はスキップ
+      if (r.seat_id !== seatId) return false
+
+      // キャンセル済みや完了済みは表示しない
+      if (r.status === 'cancelled' || r.status === 'completed') return false
+
+      // in_use なら対象
+      if (r.status === 'in_use') return true
+
+      // reserved（予約済み）なら対象
+      if (r.status === 'reserved') return true
+
+      return false
+    })
+
+    // 予約が見つかった場合、状態を返す
+    if (reservation) {
+      // reserved で開始時刻 <= 現在時刻 < 終了時刻 の場合、in_use として扱う
+      if (reservation.status === 'reserved') {
+        const startTime = new Date(reservation.start_time)
+        const endTime = new Date(reservation.end_time)
+        if (startTime <= now && now < endTime) {
+          return 'in_use'
+        }
+      }
+      return reservation.status
+    }
+
+    return null
   }
 
   // 検索条件が設定されているかチェック
