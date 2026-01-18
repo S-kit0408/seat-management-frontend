@@ -18,12 +18,14 @@ interface SeatViewerProps {
   filterFloorId?: string | null
   searchKeyword?: string
   selectedAttributes?: string[]
+  aiSearchResultIds?: string[] | null
 }
 
 export function SeatViewer({
   filterFloorId,
   searchKeyword = '',
   selectedAttributes = [],
+  aiSearchResultIds = null,
 }: SeatViewerProps = {}) {
   const { getToken } = useAuth()
   const { seats, selectSeat, deselectAll, selectedSeatIds } = useSeatStore()
@@ -132,10 +134,17 @@ export function SeatViewer({
 
   // 検索条件が設定されているかチェック
   const hasSearchConditions =
-    selectedAttributes.length > 0 || searchKeyword.trim().length > 0
+    selectedAttributes.length > 0 ||
+    searchKeyword.trim().length > 0 ||
+    aiSearchResultIds !== null
 
   // 座席が検索条件に該当するかチェックする関数
   const matchesSearchCriteria = (seat: Seat): boolean => {
+    // AI検索結果が設定されている場合、それに該当するかチェック
+    if (aiSearchResultIds !== null) {
+      return aiSearchResultIds.includes(seat.id)
+    }
+
     // 検索条件がない場合は常にtrue
     if (!hasSearchConditions) return true
 

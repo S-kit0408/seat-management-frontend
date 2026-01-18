@@ -30,6 +30,7 @@ export default function SeatsPage() {
 
   const [searchKeyword, setSearchKeyword] = useState('')
   const [selectedAttributes, setSelectedAttributes] = useState<string[]>([])
+  const [aiSearchResults, setAiSearchResults] = useState<string[] | null>(null) // AI検索の座席IDリスト
 
   // フィルタリング後の座席数を計算
   const filteredSeatsCount = useMemo(() => {
@@ -225,14 +226,17 @@ export default function SeatsPage() {
               open={searchDialogOpen}
               onOpenChange={setSearchDialogOpen}
               onSearchResults={(foundSeats) => {
-                // 検索結果が得られたら、属性検索タブに切り替え
+                // 検索結果が得られたら保存
                 if (foundSeats.length > 0) {
-                  setSearchMode('attribute')
-                  // 最初に見つかった座席をズーム対象に設定
+                  // 座席 ID リストを保存
+                  setAiSearchResults(foundSeats.map((s) => s.id))
+                  // 最初に見つかった座席のフロアを選択
                   const firstSeat = foundSeats[0]
                   if (firstSeat.floor_id) {
                     setSelectedFloorId(firstSeat.floor_id)
                   }
+                  // ダイアログを自動で閉じる
+                  setSearchDialogOpen(false)
                 }
               }}
             />
@@ -263,6 +267,31 @@ export default function SeatsPage() {
             </div>
           )}
 
+          {/* AI検索結果の表示 */}
+          {aiSearchResults && aiSearchResults.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg shadow-md p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-900">
+                    AI検索: <span className="text-lg font-bold">{aiSearchResults.length}件</span>の座席が見つかりました
+                  </p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    {searchMode === 'natural' ? 'クエリ: ' + naturalText : ''}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setAiSearchResults(null)
+                    setNaturalText('')
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors"
+                >
+                  検索をクリア
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* キャンバスと情報パネル */}
           <div className="relative">
             <div className="bg-white rounded-lg shadow-md p-4">
@@ -270,6 +299,7 @@ export default function SeatsPage() {
                 filterFloorId={selectedFloorId}
                 searchKeyword={searchKeyword}
                 selectedAttributes={selectedAttributes}
+                aiSearchResultIds={aiSearchResults}
               />
             </div>
 
