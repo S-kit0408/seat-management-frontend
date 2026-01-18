@@ -68,9 +68,7 @@ export function SeatInfoPanel({
       }
     }
 
-    if (getToken) {
-      loadUserInfo()
-    }
+    loadUserInfo()
   }, [getToken])
 
   // 座席の現在の予約を取得（リフレッシュ可能）
@@ -418,7 +416,7 @@ export function SeatInfoPanel({
           onReservationCreated?.()
         }}
         onSubmit={async (data: CreateInstantReservationRequest) => {
-          return await createInstantReservation(data)
+          await createInstantReservation(data)
         }}
         defaultSeatId={seat.id}
       />
@@ -436,7 +434,7 @@ export function SeatInfoPanel({
           onReservationCreated?.()
         }}
         onSubmit={async (data: CreateReservationRequest) => {
-          return await createReservation(data)
+          await createReservation(data)
         }}
         defaultSeatId={seat.id}
       />

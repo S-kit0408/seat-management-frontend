@@ -10,6 +10,7 @@ import { SeatInfoPanel } from '@/components/seats/SeatInfoPanel'
 import { SeatReservationSchedule } from '@/components/seats/SeatReservationSchedule'
 import { MapPin, Info, Building2 } from 'lucide-react'
 import { AttributeSearch } from '@/components/seats/AttributeSearch'
+import NaturalLanguageSearchDialog from '@/components/seats/NaturalLanguageSearchDialog'
 
 export default function SeatsPage() {
   const { getToken } = useAuth()
@@ -25,6 +26,7 @@ export default function SeatsPage() {
     'attribute'
   )
   const [naturalText, setNaturalText] = useState('')
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false)
 
   const [searchKeyword, setSearchKeyword] = useState('')
   const [selectedAttributes, setSelectedAttributes] = useState<string[]>([])
@@ -203,25 +205,37 @@ export default function SeatsPage() {
               />
             )}
 
-            {/* 今後コンポーネントで管理・機能実装 */}
+            {/* 自然言語検索 */}
             {searchMode === 'natural' && (
               <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="例：静かで窓際の席を探したい"
-                  value={naturalText}
-                  onChange={(e) => setNaturalText(e.target.value)}
-                  className="w-full border px-3 py-2 rounded-lg"
-                />
-
+                <p className="text-sm text-gray-600 mb-3">
+                  自然言語で座席を検索できます。Gemini AIが自動解析します。
+                </p>
                 <button
-                  onClick={() => alert(`検索: ${naturalText}`)}
-                  className="w-full py-2 bg-blue-600 text-white rounded-lg"
+                  onClick={() => setSearchDialogOpen(true)}
+                  className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
                 >
-                  検索する
+                  検索ダイアログを開く
                 </button>
               </div>
             )}
+
+            {/* 自然言語検索ダイアログ */}
+            <NaturalLanguageSearchDialog
+              open={searchDialogOpen}
+              onOpenChange={setSearchDialogOpen}
+              onSearchResults={(foundSeats) => {
+                // 検索結果が得られたら、属性検索タブに切り替え
+                if (foundSeats.length > 0) {
+                  setSearchMode('attribute')
+                  // 最初に見つかった座席をズーム対象に設定
+                  const firstSeat = foundSeats[0]
+                  if (firstSeat.floor_id) {
+                    setSelectedFloorId(firstSeat.floor_id)
+                  }
+                }
+              }}
+            />
           </div>
 
           {/* フロア選択 */}
