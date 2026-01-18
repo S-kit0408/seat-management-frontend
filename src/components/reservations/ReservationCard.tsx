@@ -8,8 +8,8 @@ import { useRouter } from 'next/navigation'
 interface Props {
   reservation: Reservation
   showActions?: boolean
-  onCheckin?: (id: string) => Promise<void>
-  onCheckout?: (id: string) => Promise<void>
+  onShowQRCheckin?: (reservation: Reservation) => void
+  onShowQRCheckout?: (reservation: Reservation) => void
   onCancel?: (id: string) => Promise<void>
 }
 
@@ -17,8 +17,8 @@ interface Props {
 export default function ReservationCard({
   reservation,
   showActions = false,
-  onCheckin,
-  onCheckout,
+  onShowQRCheckin,
+  onShowQRCheckout,
   onCancel,
 }: Props) {
   const router = useRouter()
@@ -152,18 +152,18 @@ export default function ReservationCard({
       {/* アクションボタン */}
       {showActions && (
         <div className="flex gap-2 pt-3 border-t border-gray-100">
-          {reservation.status === 'reserved' && onCheckin && (
+          {reservation.status === 'reserved' && onShowQRCheckin && (
             <button
-              onClick={() => onCheckin(reservation.id)}
+              onClick={() => onShowQRCheckin(reservation)}
               className="flex-1 px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
             >
               チェックイン
             </button>
           )}
 
-          {reservation.status === 'in_use' && onCheckout && (
+          {reservation.status === 'in_use' && onShowQRCheckout && (
             <button
-              onClick={() => onCheckout(reservation.id)}
+              onClick={() => onShowQRCheckout(reservation)}
               className="flex-1 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
             >
               チェックアウト

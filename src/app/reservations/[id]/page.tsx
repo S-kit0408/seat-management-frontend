@@ -16,8 +16,10 @@ import {
   Tag,
   FileText,
   AlertCircle,
+  QrCode,
 } from 'lucide-react'
 import { Reservation } from '@/types/reservation'
+import QRCodeReservationModal from '@/components/reservations/QRCodeReservationModal'
 
 export default function ReservationDetailPage() {
   const params = useParams()
@@ -32,12 +34,24 @@ export default function ReservationDetailPage() {
   const [showExtendDialog, setShowExtendDialog] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [qrAction, setQrAction] = useState<'checkin' | 'checkout' | null>(null)
 
   useEffect(() => {
     if (reservationId) {
       fetchReservation(reservationId)
     }
   }, [reservationId, fetchReservation])
+
+  // Render時にデバッグログを出力
+  useEffect(() => {
+    console.log(
+      '[ReservationDetailPage] Render - reservation status:',
+      reservation?.status
+    )
+    console.log('[ReservationDetailPage] showQRModal:', showQRModal)
+    console.log('[ReservationDetailPage] qrAction:', qrAction)
+  }, [reservation?.status, showQRModal, qrAction])
 
   // 日時フォーマット
   const formatDateTime = (dateString: string) => {
@@ -65,34 +79,34 @@ export default function ReservationDetailPage() {
       : `${minutes}分`
   }
 
-  // チェックインハンドラー
-  const handleCheckin = async () => {
+  // QRコード下のボタン押下時にチェックイン実行
+  const handleQRCheckinAction = async () => {
     if (!reservation) return
     setActionLoading(true)
     try {
       await checkin(reservation.id)
       alert('チェックインしました')
+      setShowQRModal(false)
+      setQrAction(null)
       fetchReservation(reservationId)
     } catch (err: any) {
       alert(err.message)
-    } finally {
       setActionLoading(false)
     }
   }
 
-  // チェックアウトハンドラー
-  const handleCheckout = async () => {
+  // QRコード下のボタン押下時にチェックアウト実行
+  const handleQRCheckoutAction = async () => {
     if (!reservation) return
-    if (!confirm('チェックアウトしますか？')) return
-
     setActionLoading(true)
     try {
       await checkout(reservation.id)
       alert('チェックアウトしました')
+      setShowQRModal(false)
+      setQrAction(null)
       fetchReservation(reservationId)
     } catch (err: any) {
       alert(err.message)
-    } finally {
       setActionLoading(false)
     }
   }
@@ -372,10 +386,34 @@ export default function ReservationDetailPage() {
           reservation.status === 'in_use') && (
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">アクション</h2>
+            {/* デバッグ情報 */}
+            <div className="mb-4 p-2 bg-gray-100 rounded text-xs text-gray-600">
+              Status: {reservation.status} | showQRModal: {String(showQRModal)}{' '}
+              | qrAction: {qrAction || 'null'}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* QR コード表示ボタン */}
+              {/*<button*/}
+              {/*  onClick={() => {*/}
+              {/*    console.log('[QR Display Button] Clicked')*/}
+              {/*    setQrAction(null)*/}
+              {/*    setShowQRModal(true)*/}
+              {/*  }}*/}
+              {/*  className="px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"*/}
+              {/*>*/}
+              {/*  <QrCode className="w-5 h-5" />*/}
+              {/*  QRコードを表示*/}
+              {/*</button>*/}
+
               {reservation.status === 'reserved' && (
                 <button
-                  onClick={handleCheckin}
+                  onClick={() => {
+                    console.log(
+                      '[Checkin Button] Clicked - setting state to checkin'
+                    )
+                    setQrAction('checkin')
+                    setShowQRModal(true)
+                  }}
                   disabled={actionLoading}
                   className="px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors disabled:bg-gray-400 flex items-center justify-center gap-2"
                 >
@@ -387,7 +425,13 @@ export default function ReservationDetailPage() {
               {reservation.status === 'in_use' && (
                 <>
                   <button
-                    onClick={handleCheckout}
+                    onClick={() => {
+                      console.log(
+                        '[Checkout Button] Clicked - setting state to checkout'
+                      )
+                      setQrAction('checkout')
+                      setShowQRModal(true)
+                    }}
                     disabled={actionLoading}
                     className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors disabled:bg-gray-400 flex items-center justify-center gap-2"
                   >
@@ -504,6 +548,23 @@ export default function ReservationDetailPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* QR コード表示モーダル */}
+        {reservation && (
+          <QRCodeReservationModal
+            open={showQRModal}
+            onOpenChange={setShowQRModal}
+            reservation={reservation}
+            context={qrAction || 'detail'}
+            onAction={
+              qrAction === 'checkin'
+                ? handleQRCheckinAction
+                : qrAction === 'checkout'
+                  ? handleQRCheckoutAction
+                  : undefined
+            }
+          />
         )}
 
         {/* メタ情報 */}

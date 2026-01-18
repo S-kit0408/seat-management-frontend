@@ -32,6 +32,11 @@ export const reservationApi = {
     getToken: GetToken,
     data: CreateReservationRequest
   ): Promise<Reservation> => {
+    console.log('[API] createReservation request body:', {
+      privacy_setting: data.privacy_setting,
+      data: data,
+    })
+
     const response = await apiClientFetch(
       `/api/reservations`,
       {
@@ -47,6 +52,10 @@ export const reservationApi = {
     }
 
     const result: ReservationResponse = await response.json()
+    console.log('[API] createReservation response:', {
+      privacy_setting: result.data?.privacy_setting || result.reservation?.privacy_setting,
+      result: result,
+    })
     return result.data || result.reservation || (result as any)
   },
 
@@ -55,6 +64,11 @@ export const reservationApi = {
     getToken: GetToken,
     data: CreateInstantReservationRequest
   ): Promise<Reservation> => {
+    console.log('[API] createInstantReservation request body:', {
+      privacy_setting: data.privacy_setting,
+      data: data,
+    })
+
     const response = await apiClientFetch(
       `/api/reservations/instant`,
       {
@@ -70,6 +84,10 @@ export const reservationApi = {
     }
 
     const result: ReservationResponse = await response.json()
+    console.log('[API] createInstantReservation response:', {
+      privacy_setting: result.data?.privacy_setting || result.reservation?.privacy_setting,
+      result: result,
+    })
     return result.data || result.reservation || (result as any)
   },
 

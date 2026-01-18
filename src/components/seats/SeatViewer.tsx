@@ -2,12 +2,14 @@
 
 import { useSeatStore } from '@/lib/stores/seatStore'
 import { ViewOnlySeat } from './ViewOnlySeat'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { ZoomIn, ZoomOut, Maximize2, RotateCcw } from 'lucide-react'
 import { Seat } from '@/types/seat'
 import { Reservation, ReservationStatus } from '@/types/reservation'
 import { reservationApi } from '@/lib/api/reservations'
+import { getFriends } from '@/lib/api/friends'
+import { User } from '@/types/user'
 
 const CANVAS_WIDTH = 3000
 const CANVAS_HEIGHT = 1500
@@ -21,12 +23,13 @@ interface SeatViewerProps {
 export function SeatViewer({
   filterFloorId,
   searchKeyword = '',
-  selectedAttributes = []
+  selectedAttributes = [],
 }: SeatViewerProps = {}) {
   const { getToken } = useAuth()
   const { seats, selectSeat, deselectAll, selectedSeatIds } = useSeatStore()
   const [zoom, setZoom] = useState(0.5) // 初期50%表示
   const [reservations, setReservations] = useState<Reservation[]>([])
+  const [friends, setFriends] = useState<User[]>([])
 
   // 予約データを取得
   useEffect(() => {
@@ -44,8 +47,55 @@ export function SeatViewer({
     fetchReservations()
   }, [getToken])
 
+  // フレンド一覧を取得
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        const friendsList = await getFriends(getToken)
+        setFriends(friendsList)
+      } catch (err) {
+        console.error('[SeatViewer] フレンド取得エラー:', err)
+        setFriends([])
+      }
+    }
+
+    fetchFriends()
+  }, [getToken])
+
+  // フレンドが使用中の座席IDをメモ化
+  const friendSeatIds = useMemo(() => {
+    const seatIds = new Set<string>()
+
+    if (friends.length === 0) return seatIds
+
+    const friendIds = new Set(friends.map((f) => f.id))
+
+    reservations.forEach((reservation) => {
+      // キャンセル済みや完了済みは除外
+      if (
+        reservation.status === 'cancelled' ||
+        reservation.status === 'completed'
+      ) {
+        return
+      }
+
+      // 予約のユーザーがフレンドなら座席IDを追加
+      if (
+        reservation.user_id &&
+        friendIds.has(reservation.user_id) &&
+        reservation.status === 'in_use'
+      ) {
+        seatIds.add(reservation.seat_id)
+      }
+    })
+
+    return seatIds
+  }, [friends, reservations])
+
   // 座席IDから予約状態を取得する関数
-  const getReservationStatusForSeat = (seatId: string): ReservationStatus | null => {
+  const getReservationStatusForSeat = (
+    seatId: string
+  ): ReservationStatus | null => {
     const now = new Date()
 
     const reservation = reservations.find((r) => {
@@ -119,17 +169,22 @@ export function SeatViewer({
       if (seat.description?.toLowerCase().includes(keyword)) return true
 
       // attributesでの検索
-      const matchesAttributes = Object.entries(seatAttrs).some(([key, value]) => {
-        if (key.toLowerCase().includes(keyword)) return true
-        if (typeof value === 'string' && value.toLowerCase().includes(keyword))
-          return true
-        if (Array.isArray(value)) {
-          return value.some(
-            (v) => typeof v === 'string' && v.toLowerCase().includes(keyword)
+      const matchesAttributes = Object.entries(seatAttrs).some(
+        ([key, value]) => {
+          if (key.toLowerCase().includes(keyword)) return true
+          if (
+            typeof value === 'string' &&
+            value.toLowerCase().includes(keyword)
           )
+            return true
+          if (Array.isArray(value)) {
+            return value.some(
+              (v) => typeof v === 'string' && v.toLowerCase().includes(keyword)
+            )
+          }
+          return false
         }
-        return false
-      })
+      )
 
       if (!matchesAttributes) return false
     }
@@ -233,10 +288,12 @@ export function SeatViewer({
 
         <div className="flex items-center gap-4 text-sm text-gray-600">
           <span>
-            総座席数: <span className="font-semibold text-gray-900">{totalSeats}</span>
+            総座席数:{' '}
+            <span className="font-semibold text-gray-900">{totalSeats}</span>
           </span>
           <span>
-            利用可能: <span className="font-semibold text-green-600">{activeSeats}</span>
+            利用可能:{' '}
+            <span className="font-semibold text-green-600">{activeSeats}</span>
           </span>
         </div>
       </div>
@@ -271,8 +328,10 @@ export function SeatViewer({
           {/* ズームを適用したグループ */}
           <g transform={`scale(${zoom})`}>
             {filteredSeats.map((seat) => {
-              const isDimmed = hasSearchConditions && !matchesSearchCriteria(seat)
+              const isDimmed =
+                hasSearchConditions && !matchesSearchCriteria(seat)
               const reservationStatus = getReservationStatusForSeat(seat.id)
+              const isFriendSeat = friendSeatIds.has(seat.id)
               return (
                 <ViewOnlySeat
                   key={seat.id}
@@ -282,6 +341,7 @@ export function SeatViewer({
                   zoom={zoom}
                   isDimmed={isDimmed}
                   reservationStatus={reservationStatus}
+                  isFriendSeat={isFriendSeat}
                 />
               )
             })}
@@ -301,7 +361,7 @@ export function SeatViewer({
         </div>
         <div className="flex items-center gap-1">
           <div className="w-4 h-4 bg-blue-100 border-2 border-blue-600 rounded" />
-          <span>予約済</span>
+          <span>フレンド使用中</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-4 h-4 bg-green-100 border-2 border-green-600 rounded" />

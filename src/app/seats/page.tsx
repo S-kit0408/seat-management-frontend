@@ -7,6 +7,7 @@ import { seatApi } from '@/lib/api/seats'
 import { floorApi, Floor } from '@/lib/api/floors'
 import { SeatViewer } from '@/components/seats/SeatViewer'
 import { SeatInfoPanel } from '@/components/seats/SeatInfoPanel'
+import { SeatReservationSchedule } from '@/components/seats/SeatReservationSchedule'
 import { MapPin, Info, Building2 } from 'lucide-react'
 import { AttributeSearch } from '@/components/seats/AttributeSearch'
 
@@ -17,6 +18,7 @@ export default function SeatsPage() {
   const [error, setError] = useState<string | null>(null)
   const [floors, setFloors] = useState<Floor[]>([])
   const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null)
+  const [refreshTrigger, setRefreshTrigger] = useState(0) // 予約作成時に状態更新をトリガー
 
   // 検索用
   const [searchMode, setSearchMode] = useState<'attribute' | 'natural'>(
@@ -260,10 +262,28 @@ export default function SeatsPage() {
             {/* 座席情報パネル（フローティング表示） */}
             {selectedSeatIds.length > 0 && (
               <div className="absolute top-4 right-4 w-80 max-h-[calc(100%-2rem)] overflow-y-auto z-10">
-                <SeatInfoPanel selectedSeatId={selectedSeatIds[0] || null} />
+                <SeatInfoPanel
+                  selectedSeatId={selectedSeatIds[0] || null}
+                  onReservationCreated={() => {
+                    // 予約作成後に最新情報を表示するため、refreshTrigger を更新
+                    setRefreshTrigger((prev) => prev + 1)
+                  }}
+                />
               </div>
             )}
           </div>
+
+          {/* 座席の予約スケジュール（キャンバス下側） */}
+          {selectedSeatIds.length > 0 && (
+            <SeatReservationSchedule
+              seatId={selectedSeatIds[0] || null}
+              seatNumber={
+                seats.find((s) => s.id === selectedSeatIds[0])?.seat_number || 'N/A'
+              }
+              showPrivacyInfo={true}
+              refreshTrigger={refreshTrigger}
+            />
+          )}
         </div>
       </div>
     </div>

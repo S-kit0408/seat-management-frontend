@@ -1,14 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Calendar, MapPin } from 'lucide-react'
+import { X, Calendar, MapPin, AlertCircle } from 'lucide-react'
 import { CreateReservationRequest } from '@/types/reservation'
 import { PrivacySetting } from '@/types/user'
+import { floorApi, OperationHours } from '@/lib/api/floors'
+import { seatApi } from '@/lib/api/seats'
 
 // バリデーションスキーマ
 const reservationSchema = z
@@ -58,6 +60,11 @@ export default function CreateReservationDialog({
   const { getToken } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [floorId, setFloorId] = useState<string | null>(null)
+  const [operationHours, setOperationHours] = useState<OperationHours[]>([])
+  const [isLoadingOperationHours, setIsLoadingOperationHours] = useState(false)
+  const [selectedStartTime, setSelectedStartTime] = useState<string>('')
+  const [operationHoursWarning, setOperationHoursWarning] = useState<string | null>(null)
 
   const {
     register,
@@ -75,6 +82,24 @@ export default function CreateReservationDialog({
     },
   })
 
+  // エラーメッセージを解析・カスタマイズ
+  const formatErrorMessage = (errorMessage: string): string => {
+    // 営業時間関連のエラーをチェック
+    if (
+      errorMessage.includes('休館日') ||
+      errorMessage.includes('ErrFloorClosed')
+    ) {
+      return '指定された日時はフロアが休館日です。別の日付をお選びください。'
+    }
+    if (
+      errorMessage.includes('営業時間外') ||
+      errorMessage.includes('ErrOutsideOperatingHours')
+    ) {
+      return '指定された時刻は営業時間外です。営業時間内の時刻をお選びください。'
+    }
+    return errorMessage
+  }
+
   // フォーム送信処理
   const handleFormSubmit = async (data: ReservationFormData) => {
     setIsSubmitting(true)
@@ -89,8 +114,7 @@ export default function CreateReservationDialog({
         seat_id: data.seat_id,
         start_time: startDate.toISOString(),
         end_time: endDate.toISOString(),
-        // 座席の使用状況は全員が知る必要があるため、デフォルトは「公開」
-        privacy_setting: data.privacy_setting || 'public',
+        ...(data.privacy_setting && { privacy_setting: data.privacy_setting }),
       }
 
       // notesが空文字列でない場合のみ追加
@@ -98,13 +122,102 @@ export default function CreateReservationDialog({
         requestData.notes = data.notes.trim()
       }
 
-      await onSubmit(requestData)
+      // デバッグログ
+      console.log('[CreateReservationDialog] Form data:', {
+        form_privacy_setting: data.privacy_setting,
+        request_privacy_setting: requestData.privacy_setting,
+        requestData: requestData,
+      })
+
+      const reservation = await onSubmit(requestData)
       reset()
+      // ダイアログを閉じる前にonSuccessコールバックを呼び出す
+      onSuccess(reservation)
       onOpenChange(false)
     } catch (err: any) {
-      setError(err.message || '予約の作成に失敗しました')
+      const errorMsg = err.message || '予約の作成に失敗しました'
+      setError(formatErrorMessage(errorMsg))
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // 営業時間を読み込む
+  useEffect(() => {
+    if (!open || !defaultSeatId || isLoadingOperationHours) {
+      return
+    }
+
+    const loadOperationHours = async () => {
+      try {
+        setIsLoadingOperationHours(true)
+        const token = await getToken()
+        if (!token) return
+
+        // 座席情報を取得してフロアIDを得る
+        const seat = await seatApi.getSeat(getToken, defaultSeatId)
+        if (!seat.floor_id) {
+          setFloorId(null)
+          setOperationHours([])
+          return
+        }
+
+        setFloorId(seat.floor_id)
+
+        // フロアの営業時間を取得
+        const result = await floorApi.getOperationHours(getToken, seat.floor_id)
+        setOperationHours(result.operation_hours || [])
+      } catch (err) {
+        console.error('Failed to load operation hours:', err)
+        // エラーがあっても予約フォームは表示し続ける
+        setOperationHours([])
+      } finally {
+        setIsLoadingOperationHours(false)
+      }
+    }
+
+    loadOperationHours()
+  }, [open, defaultSeatId, getToken, isLoadingOperationHours])
+
+  // 選択された日時が営業時間内かチェック
+  const checkOperationHours = (startTimeStr: string) => {
+    setOperationHoursWarning(null)
+
+    if (!startTimeStr || !operationHours || operationHours.length === 0) {
+      return
+    }
+
+    try {
+      const startDate = new Date(startTimeStr)
+      const dayOfWeek = startDate.getDay()
+
+      const dayHours = operationHours.find((oh) => oh.day_of_week === dayOfWeek)
+
+      if (!dayHours) {
+        setOperationHoursWarning('指定された曜日の営業時間情報が見つかりません')
+        return
+      }
+
+      if (dayHours.is_closed) {
+        setOperationHoursWarning('本日は営業していないため、予約できません')
+        return
+      }
+
+      // 選択された時刻を HH:MM:SS に変換
+      const hours = String(startDate.getHours()).padStart(2, '0')
+      const minutes = String(startDate.getMinutes()).padStart(2, '0')
+      const seconds = '00'
+      const selectedTime = `${hours}:${minutes}:${seconds}`
+
+      // 営業時間内かチェック
+      if (selectedTime < dayHours.open_time || selectedTime >= dayHours.close_time) {
+        setOperationHoursWarning(
+          `営業時間外です。営業時間は ${dayHours.open_time.slice(0, 5)} ～ ${dayHours.close_time.slice(0, 5)} です`
+        )
+        return
+      }
+    } catch (err) {
+      console.error('Error checking operation hours:', err)
     }
   }
 
@@ -113,6 +226,10 @@ export default function CreateReservationDialog({
     if (!newOpen) {
       reset()
       setError(null)
+      setOperationHoursWarning(null)
+      setFloorId(null)
+      setOperationHours([])
+      setSelectedStartTime('')
     }
     onOpenChange(newOpen)
   }
@@ -122,6 +239,31 @@ export default function CreateReservationDialog({
     const now = new Date()
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
     return now.toISOString().slice(0, 16)
+  }
+
+  // 営業時間を表示用に フォーマット
+  const getOperationHoursDisplay = () => {
+    if (operationHours.length === 0) {
+      return null
+    }
+
+    const today = new Date().getDay()
+    const todayHours = operationHours.find((oh) => oh.day_of_week === today)
+
+    if (!todayHours) {
+      return null
+    }
+
+    if (todayHours.is_closed) {
+      return <span className="text-red-600">本日は営業していません</span>
+    }
+
+    return (
+      <span className="text-green-600">
+        本日の営業時間: {todayHours.open_time.slice(0, 5)} ～{' '}
+        {todayHours.close_time.slice(0, 5)}
+      </span>
+    )
   }
 
   return (
@@ -148,6 +290,13 @@ export default function CreateReservationDialog({
           <Dialog.Description className="text-sm text-gray-600 mb-6">
             座席を指定して予約を作成します
           </Dialog.Description>
+
+          {/* 営業時間表示 */}
+          {getOperationHoursDisplay() && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+              <p className="text-sm">{getOperationHoursDisplay()}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
             {/* 座席ID */}
@@ -187,7 +336,12 @@ export default function CreateReservationDialog({
               <input
                 id="start_time"
                 type="datetime-local"
-                {...register('start_time')}
+                {...register('start_time', {
+                  onChange: (e) => {
+                    setSelectedStartTime(e.target.value)
+                    checkOperationHours(e.target.value)
+                  },
+                })}
                 min={getCurrentDateTime()}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -195,6 +349,12 @@ export default function CreateReservationDialog({
                 <p className="text-red-500 text-sm mt-1">
                   {errors.start_time.message}
                 </p>
+              )}
+              {operationHoursWarning && (
+                <div className="flex items-start gap-2 mt-2 text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm">{operationHoursWarning}</p>
+                </div>
               )}
             </div>
 

@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Zap, MapPin, Clock } from 'lucide-react'
+import { X, Zap, MapPin, Clock, AlertCircle } from 'lucide-react'
 import { CreateInstantReservationRequest } from '@/types/reservation'
+import { floorApi, OperationHours } from '@/lib/api/floors'
+import { seatApi } from '@/lib/api/seats'
 
 // バリデーションスキーマ
 const instantReservationSchema = z.object({
@@ -44,6 +46,12 @@ export default function InstantReservationDialog({
   const { getToken } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [floorId, setFloorId] = useState<string | null>(null)
+  const [operationHours, setOperationHours] = useState<OperationHours[]>([])
+  const [isLoadingOperationHours, setIsLoadingOperationHours] = useState(false)
+  const [operationHoursWarning, setOperationHoursWarning] = useState<
+    string | null
+  >(null)
 
   const {
     register,
@@ -51,6 +59,7 @@ export default function InstantReservationDialog({
     formState: { errors },
     reset,
     watch,
+    setValue,
   } = useForm<InstantReservationFormData>({
     resolver: zodResolver(instantReservationSchema),
     defaultValues: {
@@ -60,8 +69,119 @@ export default function InstantReservationDialog({
     },
   })
 
+  // 営業時間を読み込む
+  useEffect(() => {
+    if (!open || !defaultSeatId || isLoadingOperationHours) {
+      return
+    }
+
+    const loadOperationHours = async () => {
+      try {
+        setIsLoadingOperationHours(true)
+        const token = await getToken()
+        if (!token) return
+
+        // 座席情報を取得してフロアIDを得る
+        const seat = await seatApi.getSeat(getToken, defaultSeatId)
+        if (!seat.floor_id) {
+          setFloorId(null)
+          setOperationHours([])
+          return
+        }
+
+        setFloorId(seat.floor_id)
+
+        // フロアの営業時間を取得
+        const result = await floorApi.getOperationHours(getToken, seat.floor_id)
+        const hours = result.operation_hours || []
+        setOperationHours(hours)
+        // 初期状態で営業時間チェック
+        checkOperationHours(hours, durationMinutes)
+      } catch (err) {
+        console.error('Failed to load operation hours:', err)
+        setOperationHours([])
+      } finally {
+        setIsLoadingOperationHours(false)
+      }
+    }
+
+    loadOperationHours()
+  }, [open, defaultSeatId, getToken, isLoadingOperationHours])
+
   // 利用時間を監視して終了時刻を表示
   const durationMinutes = watch('duration_minutes')
+
+  // 営業時間チェック（利用時間が変更されたときに呼び出される）
+  useEffect(() => {
+    if (operationHours && operationHours.length > 0 && durationMinutes) {
+      checkOperationHours(operationHours, durationMinutes)
+    }
+  }, [durationMinutes, operationHours])
+
+  // 営業時間チェック関数
+  const checkOperationHours = (
+    hours: OperationHours[],
+    durationMinutes: number
+  ) => {
+    setOperationHoursWarning(null)
+
+    if (!durationMinutes || !hours || hours.length === 0) {
+      return
+    }
+
+    try {
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+
+      const dayHours = hours.find((oh) => oh.day_of_week === dayOfWeek)
+
+      if (!dayHours) {
+        setOperationHoursWarning('本日の営業時間情報が見つかりません')
+        return
+      }
+
+      if (dayHours.is_closed) {
+        setOperationHoursWarning(
+          '本日は営業していないため、即時予約はできません'
+        )
+        return
+      }
+
+      // 現在時刻を HH:MM:SS に変換
+      const currentHours = String(now.getHours()).padStart(2, '0')
+      const currentMinutes = String(now.getMinutes()).padStart(2, '0')
+      const currentSeconds = '00'
+      const currentTime = `${currentHours}:${currentMinutes}:${currentSeconds}`
+
+      // 現在時刻が営業時間外かチェック
+      if (
+        currentTime < dayHours.open_time ||
+        currentTime >= dayHours.close_time
+      ) {
+        setOperationHoursWarning(
+          `現在は営業時間外です。営業時間は ${dayHours.open_time.slice(0, 5)} ～ ${dayHours.close_time.slice(0, 5)} です`
+        )
+        return
+      }
+
+      // 終了時刻が営業時間内かチェック
+      const endTime = new Date(now.getTime() + durationMinutes * 60000)
+      const endHours = String(endTime.getHours()).padStart(2, '0')
+      const endMinutes = String(endTime.getMinutes()).padStart(2, '0')
+      const endSeconds = '00'
+      const endTimeStr = `${endHours}:${endMinutes}:${endSeconds}`
+
+      // 営業終了時刻と同じか、それより後ろの場合はエラー（バックエンドと同じロジック）
+      if (endTimeStr >= dayHours.close_time) {
+        setOperationHoursWarning(
+          `指定された利用時間では営業時間を超えます。営業時間終了は ${dayHours.close_time.slice(0, 5)} です`
+        )
+        return
+      }
+    } catch (err) {
+      console.error('Error checking operation hours:', err)
+    }
+  }
 
   // 終了時刻を計算
   const getEndTime = (minutes: number) => {
@@ -73,6 +193,24 @@ export default function InstantReservationDialog({
       minute: '2-digit',
       timeZone: 'Asia/Tokyo',
     }).format(endTime)
+  }
+
+  // エラーメッセージを解析・カスタマイズ
+  const formatErrorMessage = (errorMessage: string): string => {
+    // 営業時間関連のエラーをチェック
+    if (
+      errorMessage.includes('休館日') ||
+      errorMessage.includes('ErrFloorClosed')
+    ) {
+      return '本日はフロアが休館日のため、即時予約はできません。別の日にお試しください。'
+    }
+    if (
+      errorMessage.includes('営業時間外') ||
+      errorMessage.includes('ErrOutsideOperatingHours')
+    ) {
+      return '現在は営業時間外です。または指定された利用時間では営業時間を超えてしまいます。営業時間内でのご予約をお願いします。'
+    }
+    return errorMessage
   }
 
   // フォーム送信処理
@@ -88,11 +226,20 @@ export default function InstantReservationDialog({
         privacy_setting: 'public',
       }
 
-      await onSubmit(requestData)
+      // デバッグログ
+      console.log('[InstantReservationDialog] Instant reservation request:', {
+        request_privacy_setting: requestData.privacy_setting,
+        requestData: requestData,
+      })
+
+      const reservation = await onSubmit(requestData)
       reset()
+      // ダイアログを閉じる前にonSuccessコールバックを呼び出す
+      onSuccess(reservation)
       onOpenChange(false)
     } catch (err: any) {
-      setError(err.message || '即時予約の作成に失敗しました')
+      const errorMsg = err.message || '即時予約の作成に失敗しました'
+      setError(formatErrorMessage(errorMsg))
     } finally {
       setIsSubmitting(false)
     }
@@ -103,6 +250,9 @@ export default function InstantReservationDialog({
     if (!newOpen) {
       reset()
       setError(null)
+      setOperationHoursWarning(null)
+      setFloorId(null)
+      setOperationHours([])
     }
     onOpenChange(newOpen)
   }
@@ -114,7 +264,6 @@ export default function InstantReservationDialog({
     { label: '2時間', value: 120 },
     { label: '3時間', value: 180 },
     { label: '4時間', value: 240 },
-    { label: '終日（8時間）', value: 480 },
   ]
 
   return (
@@ -126,7 +275,7 @@ export default function InstantReservationDialog({
           <div className="flex items-center justify-between mb-4">
             <Dialog.Title className="text-2xl font-bold flex items-center gap-2">
               <Zap className="w-6 h-6 text-yellow-500" />
-              即時予約
+              即時利用
             </Dialog.Title>
             <Dialog.Close asChild>
               <button
@@ -139,8 +288,16 @@ export default function InstantReservationDialog({
           </div>
 
           <Dialog.Description className="text-sm text-gray-600 mb-6">
-            今すぐ座席を予約します。開始時刻は現在時刻になります。
+            今すぐ座席を予約・利用します。開始時刻は現在時刻になります。
           </Dialog.Description>
+
+          {/* 営業時間警告 */}
+          {operationHoursWarning && (
+            <div className="flex items-start gap-2 mb-4 text-amber-700 bg-amber-50 border border-amber-200 rounded p-3">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <p className="text-sm">{operationHoursWarning}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
             {/* 座席ID */}
@@ -178,16 +335,11 @@ export default function InstantReservationDialog({
                     key={preset.value}
                     type="button"
                     onClick={() => {
-                      const input = document.getElementById(
-                        'duration_minutes'
-                      ) as HTMLInputElement
-                      if (input) {
-                        input.value = preset.value.toString()
-                        // react-hook-formに値を反映
-                        input.dispatchEvent(
-                          new Event('input', { bubbles: true })
-                        )
-                      }
+                      setValue('duration_minutes', preset.value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      })
                     }}
                     className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
                   >
@@ -280,7 +432,7 @@ export default function InstantReservationDialog({
                 className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
                 <Zap className="w-4 h-4" />
-                {isSubmitting ? '作成中...' : '即時予約'}
+                {isSubmitting ? '作成中...' : '即時利用'}
               </button>
             </div>
           </form>

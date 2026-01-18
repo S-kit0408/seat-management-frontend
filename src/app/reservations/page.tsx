@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Calendar, Clock, CheckCircle, XCircle, MapPin } from 'lucide-react'
 import { useReservations } from '@/hooks/useReservation'
+import { Reservation } from '@/types/reservation'
 import ReservationCard from '@/components/reservations/ReservationCard'
+import QRCodeReservationModal from '@/components/reservations/QRCodeReservationModal'
 
 export default function ReservationsPage() {
   const {
@@ -20,29 +22,66 @@ export default function ReservationsPage() {
   } = useReservations()
 
   const [activeTab, setActiveTab] = useState<'active' | 'all'>('active')
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [qrReservation, setQrReservation] = useState<Reservation | null>(null)
+  const [qrAction, setQrAction] = useState<'checkin' | 'checkout' | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => {
     fetchMyReservations()
     fetchActiveReservations()
   }, [fetchMyReservations, fetchActiveReservations])
 
-  // アクションハンドラー
-  const handleCheckin = async (id: string) => {
+  // QR チェックイン実行
+  const handleQRCheckinAction = async () => {
+    if (!qrReservation) return
+    setActionLoading(true)
     try {
-      await checkin(id)
+      await checkin(qrReservation.id)
       alert('チェックインしました')
+      setShowQRModal(false)
+      setQrAction(null)
+      setQrReservation(null)
+      fetchMyReservations()
+      fetchActiveReservations()
     } catch (err: any) {
       alert(err.message)
+    } finally {
+      setActionLoading(false)
     }
   }
 
-  const handleCheckout = async (id: string) => {
+  // QR チェックアウト実行
+  const handleQRCheckoutAction = async () => {
+    if (!qrReservation) return
+    setActionLoading(true)
     try {
-      await checkout(id)
+      await checkout(qrReservation.id)
       alert('チェックアウトしました')
+      setShowQRModal(false)
+      setQrAction(null)
+      setQrReservation(null)
+      fetchMyReservations()
+      fetchActiveReservations()
     } catch (err: any) {
       alert(err.message)
+    } finally {
+      setActionLoading(false)
     }
+  }
+
+  // チェックイン: QR モーダル表示
+  const handleShowQRCheckin = (reservation: Reservation) => {
+    setQrReservation(reservation)
+    setQrAction('checkin')
+    setShowQRModal(true)
+  }
+
+  // チェックアウト: QR モーダル表示
+  const handleShowQRCheckout = (reservation: Reservation) => {
+    setQrReservation(reservation)
+    setQrAction('checkout')
+    setShowQRModal(true)
   }
 
   const handleCancel = async (id: string) => {
@@ -51,6 +90,8 @@ export default function ReservationsPage() {
     try {
       await cancel(id)
       alert('予約をキャンセルしました')
+      fetchMyReservations()
+      fetchActiveReservations()
     } catch (err: any) {
       alert(err.message)
     }
@@ -136,8 +177,8 @@ export default function ReservationsPage() {
                   key={reservation.id}
                   reservation={reservation}
                   showActions={true}
-                  onCheckin={handleCheckin}
-                  onCheckout={handleCheckout}
+                  onShowQRCheckin={handleShowQRCheckin}
+                  onShowQRCheckout={handleShowQRCheckout}
                   onCancel={handleCancel}
                 />
               ))}
@@ -171,8 +212,8 @@ export default function ReservationsPage() {
                   reservation.status === 'reserved' ||
                   reservation.status === 'in_use'
                 }
-                onCheckin={handleCheckin}
-                onCheckout={handleCheckout}
+                onShowQRCheckin={handleShowQRCheckin}
+                onShowQRCheckout={handleShowQRCheckout}
                 onCancel={handleCancel}
               />
             ))}
@@ -194,6 +235,17 @@ export default function ReservationsPage() {
               座席ページへ
             </Link>
           </div>
+        )}
+
+        {/* QR コード表示モーダル */}
+        {qrReservation && (
+          <QRCodeReservationModal
+            open={showQRModal}
+            onOpenChange={setShowQRModal}
+            reservation={qrReservation}
+            context={qrAction || 'detail'}
+            onAction={qrAction === 'checkin' ? handleQRCheckinAction : qrAction === 'checkout' ? handleQRCheckoutAction : undefined}
+          />
         )}
       </div>
     </div>

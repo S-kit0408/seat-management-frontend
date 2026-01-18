@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { User } from '@/types/user'
 import { getCurrentUser } from '@/lib/api/users'
 import { isAdmin } from '@/middleware/adminAuth'
-import { Users, LayoutDashboard, Shield, Settings } from 'lucide-react'
+import { Users, LayoutDashboard, Shield, Settings, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { MapPin } from 'lucide-react'
 
@@ -140,6 +140,14 @@ export default function AdminLayout({
               >
                 <Settings className="w-5 h-5" />
                 <span className="font-medium">予約設定</span>
+              </Link>
+
+              <Link
+                href="/admin/settings/floors"
+                className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-700 rounded-md transition-colors"
+              >
+                <Clock className="w-5 h-5" />
+                <span className="font-medium">営業時間設定</span>
               </Link>
 
               <div className="border-t border-gray-200 my-4"></div>
