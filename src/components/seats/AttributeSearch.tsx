@@ -140,14 +140,14 @@ export function AttributeSearch({
       )}
 
       {/* 検索結果の表示 */}
-      {hasActiveFilters && resultCount !== undefined && (
-        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-700">
-            <span className="font-semibold">{resultCount}件</span>
-            の座席が見つかりました
-          </p>
-        </div>
-      )}
+      {/*{hasActiveFilters && resultCount !== undefined && (*/}
+      {/*  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">*/}
+      {/*    <p className="text-sm text-blue-700">*/}
+      {/*      <span className="font-semibold">{resultCount}件</span>*/}
+      {/*      の座席が見つかりました*/}
+      {/*    </p>*/}
+      {/*  </div>*/}
+      {/*)}*/}
     </div>
   )
 }

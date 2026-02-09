@@ -2,14 +2,22 @@
 
 import { useSeatStore } from '@/lib/stores/seatStore'
 import { ViewOnlySeat } from './ViewOnlySeat'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '@clerk/nextjs'
-import { ZoomIn, ZoomOut, Maximize2, RotateCcw } from 'lucide-react'
+import {
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  RotateCcw,
+  Wifi,
+  WifiOff,
+} from 'lucide-react'
 import { Seat } from '@/types/seat'
 import { Reservation, ReservationStatus } from '@/types/reservation'
 import { reservationApi } from '@/lib/api/reservations'
 import { getFriends } from '@/lib/api/friends'
 import { User } from '@/types/user'
+import { useWebSocket } from '@/hooks/useWebSocket'
 
 const CANVAS_WIDTH = 3000
 const CANVAS_HEIGHT = 1500
@@ -28,10 +36,35 @@ export function SeatViewer({
   aiSearchResultIds = null,
 }: SeatViewerProps = {}) {
   const { getToken } = useAuth()
-  const { seats, selectSeat, deselectAll, selectedSeatIds } = useSeatStore()
+  const {
+    seats,
+    selectSeat,
+    deselectAll,
+    selectedSeatIds,
+    handleSeatUpdate,
+    reservationCache,
+  } = useSeatStore()
   const [zoom, setZoom] = useState(0.5) // 初期50%表示
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [friends, setFriends] = useState<User[]>([])
+
+  // WebSocket接続ハンドラー
+  const handleWebSocketMessage = useCallback(
+    (message: any) => {
+      if (message.type === 'seat_status_update') {
+        const { seat_id, status, ...reservationData } = message.data
+        console.log('[SeatViewer] 座席更新:', { seat_id, status })
+        // Zustandストアを更新
+        handleSeatUpdate(seat_id, status, reservationData)
+      }
+    },
+    [handleSeatUpdate]
+  )
+
+  // WebSocket接続
+  const { connectionStatus, error: wsError } = useWebSocket(
+    handleWebSocketMessage
+  )
 
   // 予約データを取得
   useEffect(() => {
@@ -68,9 +101,9 @@ export function SeatViewer({
   const friendSeatIds = useMemo(() => {
     const seatIds = new Set<string>()
 
-    if (friends.length === 0) return seatIds
+    if (friends?.length === 0) return seatIds
 
-    const friendIds = new Set(friends.map((f) => f.id))
+    const friendIds = new Set(friends?.map((f) => f.id))
 
     reservations.forEach((reservation) => {
       // キャンセル済みや完了済みは除外
@@ -98,6 +131,12 @@ export function SeatViewer({
   const getReservationStatusForSeat = (
     seatId: string
   ): ReservationStatus | null => {
+    // まずWebSocketキャッシュから取得
+    const cachedReservation = reservationCache.get(seatId)
+    if (cachedReservation) {
+      return cachedReservation.status
+    }
+
     const now = new Date()
 
     const reservation = reservations.find((r) => {
@@ -304,6 +343,36 @@ export function SeatViewer({
             利用可能:{' '}
             <span className="font-semibold text-green-600">{activeSeats}</span>
           </span>
+
+          {/* WebSocket接続状態インジケーター */}
+          <div className="w-px h-6 bg-gray-300 mx-2" />
+          <div className="flex items-center gap-2">
+            {connectionStatus === 'connected' ? (
+              <>
+                <Wifi className="w-4 h-4 text-green-600 animate-pulse" />
+                <span className="text-green-600 font-medium">
+                  リアルタイム更新: 有効
+                </span>
+              </>
+            ) : connectionStatus === 'connecting' ? (
+              <>
+                <Wifi className="w-4 h-4 text-yellow-600 animate-spin" />
+                <span className="text-yellow-600 font-medium">
+                  リアルタイム更新: 接続中...
+                </span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 text-red-600" />
+                <span className="text-red-600 font-medium">
+                  リアルタイム更新: 切断
+                </span>
+              </>
+            )}
+            {wsError && (
+              <span className="text-red-500 text-xs ml-1">({wsError})</span>
+            )}
+          </div>
         </div>
       </div>
 

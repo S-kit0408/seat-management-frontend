@@ -14,7 +14,7 @@ import NaturalLanguageSearchDialog from '@/components/seats/NaturalLanguageSearc
 
 export default function SeatsPage() {
   const { getToken } = useAuth()
-  const { seats, setSeats, selectedSeatIds } = useSeatStore()
+  const { seats, setSeats, selectedSeatIds, selectSeat } = useSeatStore()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [floors, setFloors] = useState<Floor[]>([])
@@ -197,20 +197,152 @@ export default function SeatsPage() {
 
             {/* 属性検索 or 自然言語検索の切替 */}
             {searchMode === 'attribute' && (
-              <AttributeSearch
-                searchKeyword={searchKeyword}
-                onSearchChange={setSearchKeyword}
-                selectedAttributes={selectedAttributes}
-                onAttributesChange={setSelectedAttributes}
-                resultCount={filteredSeatsCount}
-              />
+              <div className="space-y-4">
+                <AttributeSearch
+                  searchKeyword={searchKeyword}
+                  onSearchChange={setSearchKeyword}
+                  selectedAttributes={selectedAttributes}
+                  onAttributesChange={setSelectedAttributes}
+                  resultCount={filteredSeatsCount}
+                />
+
+                {/* 属性検索結果の座席表示 */}
+                {(selectedAttributes.length > 0 ||
+                  searchKeyword.trim().length > 0) &&
+                  filteredSeatsCount > 0 && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg shadow-md p-4 space-y-4">
+                      <div>
+                        <p className="text-sm font-medium text-green-900">
+                          検索結果:{' '}
+                          <span className="text-lg font-bold">
+                            {filteredSeatsCount}件
+                          </span>
+                          の座席が見つかりました
+                        </p>
+                      </div>
+
+                      {/* 見つかった座席の簡易表示 */}
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-green-800">
+                          クリックして座席を選択:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {seats
+                            .filter((seat) => {
+                              // フロアフィルタ
+                              if (
+                                selectedFloorId &&
+                                seat.floor_id !== selectedFloorId
+                              ) {
+                                return false
+                              }
+
+                              // 属性フィルタ
+                              if (selectedAttributes.length > 0) {
+                                const seatAttrs = seat.attributes || {}
+                                const hasAllAttributes =
+                                  selectedAttributes.every((attr) => {
+                                    return Object.entries(seatAttrs).some(
+                                      ([key, value]) => {
+                                        if (key === attr && value) return true
+                                        if (
+                                          typeof value === 'string' &&
+                                          value.includes(attr)
+                                        )
+                                          return true
+                                        if (
+                                          Array.isArray(value) &&
+                                          value.includes(attr)
+                                        )
+                                          return true
+                                        return false
+                                      }
+                                    )
+                                  })
+                                if (!hasAllAttributes) return false
+                              }
+
+                              // キーワード検索
+                              if (searchKeyword.trim()) {
+                                const keyword = searchKeyword.toLowerCase()
+                                const seatAttrs = seat.attributes || {}
+
+                                if (
+                                  seat.seat_number
+                                    ?.toLowerCase()
+                                    .includes(keyword)
+                                )
+                                  return true
+
+                                if (
+                                  seat.description
+                                    ?.toLowerCase()
+                                    .includes(keyword)
+                                )
+                                  return true
+
+                                const matchesAttributes = Object.entries(
+                                  seatAttrs
+                                ).some(([key, value]) => {
+                                  if (key.toLowerCase().includes(keyword))
+                                    return true
+                                  if (
+                                    typeof value === 'string' &&
+                                    value.toLowerCase().includes(keyword)
+                                  )
+                                    return true
+                                  if (Array.isArray(value)) {
+                                    return value.some(
+                                      (v) =>
+                                        typeof v === 'string' &&
+                                        v.toLowerCase().includes(keyword)
+                                    )
+                                  }
+                                  return false
+                                })
+
+                                if (!matchesAttributes) return false
+                              }
+
+                              return true
+                            })
+                            .sort((a, b) =>
+                              a.seat_number.localeCompare(b.seat_number)
+                            )
+                            .map((seat) => (
+                              <button
+                                key={seat.id}
+                                onClick={() => {
+                                  selectSeat(seat.id)
+                                  // フロアが異なる場合は切り替え
+                                  if (
+                                    seat.floor_id &&
+                                    seat.floor_id !== selectedFloorId
+                                  ) {
+                                    setSelectedFloorId(seat.floor_id)
+                                  }
+                                }}
+                                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                  selectedSeatIds.includes(seat.id)
+                                    ? 'bg-green-600 text-white shadow-md'
+                                    : 'bg-white text-green-700 border border-green-300 hover:bg-green-100'
+                                }`}
+                              >
+                                {seat.seat_number}
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+              </div>
             )}
 
             {/* 自然言語検索 */}
             {searchMode === 'natural' && (
               <div className="space-y-3">
                 <p className="text-sm text-gray-600 mb-3">
-                  自然言語で座席を検索できます。Gemini AIが自動解析します。
+                  自然言語で座席を検索します。
                 </p>
                 <button
                   onClick={() => setSearchDialogOpen(true)}
@@ -269,11 +401,15 @@ export default function SeatsPage() {
 
           {/* AI検索結果の表示 */}
           {aiSearchResults && aiSearchResults.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg shadow-md p-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg shadow-md p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-blue-900">
-                    AI検索: <span className="text-lg font-bold">{aiSearchResults.length}件</span>の座席が見つかりました
+                    AI検索:{' '}
+                    <span className="text-lg font-bold">
+                      {aiSearchResults.length}件
+                    </span>
+                    の座席が見つかりました
                   </p>
                   <p className="text-xs text-blue-700 mt-1">
                     {searchMode === 'natural' ? 'クエリ: ' + naturalText : ''}
@@ -288,6 +424,40 @@ export default function SeatsPage() {
                 >
                   検索をクリア
                 </button>
+              </div>
+
+              {/* 見つかった座席の簡易表示 */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-blue-800">
+                  クリックして座席を選択:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {seats
+                    .filter((seat) => aiSearchResults.includes(seat.id))
+                    .sort((a, b) => a.seat_number.localeCompare(b.seat_number))
+                    .map((seat) => (
+                      <button
+                        key={seat.id}
+                        onClick={() => {
+                          selectSeat(seat.id)
+                          // フロアが異なる場合は切り替え
+                          if (
+                            seat.floor_id &&
+                            seat.floor_id !== selectedFloorId
+                          ) {
+                            setSelectedFloorId(seat.floor_id)
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                          selectedSeatIds.includes(seat.id)
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-white text-blue-700 border border-blue-300 hover:bg-blue-100'
+                        }`}
+                      >
+                        {seat.seat_number}
+                      </button>
+                    ))}
+                </div>
               </div>
             </div>
           )}
@@ -322,7 +492,8 @@ export default function SeatsPage() {
             <SeatReservationSchedule
               seatId={selectedSeatIds[0] || null}
               seatNumber={
-                seats.find((s) => s.id === selectedSeatIds[0])?.seat_number || 'N/A'
+                seats.find((s) => s.id === selectedSeatIds[0])?.seat_number ||
+                'N/A'
               }
               showPrivacyInfo={true}
               refreshTrigger={refreshTrigger}

@@ -60,13 +60,18 @@ export default function NaturalLanguageSearchDialog({
 
       if (exactMatchOnly) {
         // exact_match_only=true の場合、seatsは配列
-        const exactMatches = 'exact_match_count' in response ? [] : (response.seats as Seat[])
+        const exactMatches =
+          'exact_match_count' in response ? [] : (response.seats as Seat[])
         setResults({ exactMatches, partialMatches: [] })
         onSearchResults(exactMatches)
       } else {
         // exact_match_only=false の場合、seatsは {exact_matches, partial_matches}
-        const exactMatches = 'exact_matches' in response.seats ? response.seats.exact_matches : []
-        const partialMatches = 'partial_matches' in response.seats ? response.seats.partial_matches : []
+        const exactMatches =
+          'exact_matches' in response.seats ? response.seats.exact_matches : []
+        const partialMatches =
+          'partial_matches' in response.seats
+            ? response.seats.partial_matches
+            : []
         setResults({ exactMatches, partialMatches })
         onSearchResults([...exactMatches, ...partialMatches])
       }
@@ -92,7 +97,8 @@ export default function NaturalLanguageSearchDialog({
     onOpenChange(newOpen)
   }
 
-  const totalResults = results.exactMatches.length + results.partialMatches.length
+  const totalResults =
+    results.exactMatches.length + results.partialMatches.length
 
   const renderSeatAttributes = (seat: Seat) => {
     if (!seat.attributes) return null
@@ -117,24 +123,43 @@ export default function NaturalLanguageSearchDialog({
   const renderSeatCard = (seat: Seat, isExactMatch: boolean = false) => (
     <div
       key={seat.id}
-      className="p-3 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100 transition-colors"
+      className="p-4 bg-white border border-gray-300 rounded-lg hover:border-blue-400 hover:shadow-md transition-all"
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
+      <div className="space-y-2">
+        {/* 座席番号と一致度 */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <p className="font-semibold text-gray-900">{seat.seat_number}</p>
+            <p className="font-bold text-lg text-gray-900">
+              {seat.seat_number}
+            </p>
             {isExactMatch && (
-              <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+              <span className="inline-flex items-center gap-1 text-xs font-medium bg-green-100 text-green-700 px-2 py-1 rounded-full">
                 <Check className="w-3 h-3" />
                 完全一致
               </span>
             )}
           </div>
-          {seat.description && (
-            <p className="text-sm text-gray-600 mt-1">{seat.description}</p>
+          {!seat.is_active && (
+            <span className="text-xs font-medium bg-red-100 text-red-700 px-2 py-1 rounded">
+              利用不可
+            </span>
           )}
-          {renderSeatAttributes(seat)}
         </div>
+
+        {/* 説明 */}
+        {seat.description && (
+          <p className="text-sm text-gray-600">{seat.description}</p>
+        )}
+
+        {/* 属性タグ */}
+        {renderSeatAttributes(seat)}
+
+        {/* フロア情報 */}
+        {seat.floor_id && (
+          <p className="text-xs text-gray-500 pt-1">
+            フロア ID: <span className="font-mono">{seat.floor_id}</span>
+          </p>
+        )}
       </div>
     </div>
   )
@@ -160,9 +185,9 @@ export default function NaturalLanguageSearchDialog({
             </Dialog.Close>
           </div>
 
-          <Dialog.Description className="text-sm text-gray-600 mb-6">
-            Gemini AIが自然言語を解析して座席を検索します
-          </Dialog.Description>
+          {/*<Dialog.Description className="text-sm text-gray-600 mb-6">*/}
+          {/*  Gemini AIが自然言語を解析して座席を検索します*/}
+          {/*</Dialog.Description>*/}
 
           <form onSubmit={handleSearch} className="space-y-4">
             {/* 検索クエリ入力 */}
@@ -223,8 +248,8 @@ export default function NaturalLanguageSearchDialog({
                     {results.exactMatches.length > 0 &&
                       results.partialMatches.length > 0 && (
                         <p className="text-xs text-green-600 mt-1">
-                          完全一致: {results.exactMatches.length}件、
-                          部分一致: {results.partialMatches.length}件
+                          完全一致: {results.exactMatches.length}件、 部分一致:{' '}
+                          {results.partialMatches.length}件
                         </p>
                       )}
                   </div>
@@ -238,11 +263,11 @@ export default function NaturalLanguageSearchDialog({
 
                 {/* 完全一致結果 */}
                 {results.exactMatches.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-700">
-                      完全一致 ({results.exactMatches.length}件):
+                  <div className="bg-blue-50 rounded-lg p-4 space-y-3">
+                    <p className="text-sm font-semibold text-blue-900">
+                      ✓ 完全一致 ({results.exactMatches.length}件)
                     </p>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-2">
                       {results.exactMatches.map((seat) =>
                         renderSeatCard(seat, true)
                       )}
@@ -252,11 +277,11 @@ export default function NaturalLanguageSearchDialog({
 
                 {/* 部分一致結果 */}
                 {results.partialMatches.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-700">
-                      部分一致 ({results.partialMatches.length}件):
+                  <div className="bg-amber-50 rounded-lg p-4 space-y-3">
+                    <p className="text-sm font-semibold text-amber-900">
+                      ◐ 部分一致 ({results.partialMatches.length}件)
                     </p>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-2">
                       {results.partialMatches.map((seat) =>
                         renderSeatCard(seat, false)
                       )}

@@ -25,7 +25,7 @@ export default async function HomePage() {
             サインイン
           </Link>
           <Link
-            href="/signup"
+            href="/auth/sign-up"
             className="bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600"
           >
             サインアップ
